@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p src
           # تحويل ملف 'للهاتف.html' ليكون هو الملف الرئيسي للتطبيق
-          cp "للهاتف.html" src/index.html
+          cp "index.html" src/index.html
           
           cat > package.json << 'EOF'
           {
@@ -47,7 +47,7 @@ jobs:
           cat > capacitor.config.json << 'EOF'
           {
             "appId": "com.ossama.whiteboard.mobile",
-            "appName": "السبورة اللانهائية",
+            "appName": "السبورة الذكية",
             "webDir": "src",
             "android": {
               "backgroundColor": "#f3f4f6",
@@ -65,7 +65,7 @@ jobs:
       - name: Sync web files
         run: npx cap sync android
 
-              - name: Set App Icon
+      - name: Set App Icon
         run: |
           mkdir -p assets
           curl -L "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQtqcg6zsweD4gOxtyqyKZ5SKHzlNr4NZu8_A&s" -o assets/icon.png
