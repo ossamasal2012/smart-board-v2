@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>السبورة اللانهائية</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+*{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+body{font-family:'Tajawal',sans-serif;overflow:hidden;background:#f3f4f6;touch-action:none;user-select:none}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px}
+
+.glass{background:rgba(255,255,255,0.97);backdrop-filter:blur(16px);border:1px solid rgba(200,210,230,0.4);box-shadow:0 4px 32px rgba(0,0,0,0.1)}
+.glass.dk{background:rgba(16,24,40,0.97);border:1px solid rgba(255,255,255,0.08);color:#e2e8f0}
+
+.tbt{
+  min-width:44px;min-height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  color:#475569;cursor:pointer;transition:all .12s;
+  border:none;background:transparent;flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.tbt:active{background:rgba(0,0,0,0.08);transform:scale(0.93)}
+.dk .tbt{color:#94a3b8}
+.dk .tbt:active{background:rgba(255,255,255,0.08)}
+.tbt.on{background:#3b82f6!important;color:#fff!important}
+.tbt.red{color:#ef4444}
+
+#cv-wrap{position:absolute;inset:0;z-index:1}
+#ui{position:absolute;inset:0;pointer-events:none;z-index:10}
+.pe{pointer-events:auto}
+
+.pan-anim{transition:opacity .22s,transform .22s}
+.pan-hide{opacity:0!important;pointer-events:none!important}
+
+#btoolbar{
+  position:absolute;bottom:70px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:4px;padding:6px 10px;
+  border-radius:20px;z-index:20;
+  max-width:calc(100vw - 16px);overflow-x:auto;
+  scrollbar-width:none;
+}
+#btoolbar::-webkit-scrollbar{display:none}
+#btoolbar.pan-hide{transform:translateX(-50%) translateY(20px)}
+
+#pages-bar{
+  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:5px;padding:5px 10px;
+  border-radius:16px;z-index:20;
+  max-width:calc(100vw - 16px);overflow-x:auto;
+  scrollbar-width:none;
+}
+#pages-bar::-webkit-scrollbar{display:none}
+#pages-bar.pan-hide{transform:translateX(-50%) translateY(20px)}
+
+.pg-btn{
+  min-width:38px;height:38px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;padding:0 10px;flex-shrink:0;
+  background:rgba(255,255,255,0.9);color:#475569;
+  border:1px solid rgba(200,210,230,0.5);
+  -webkit-tap-highlight-color:transparent;
+}
+.pg-btn:active{transform:scale(0.92)}
+.pg-btn.cur{background:#3b82f6!important;color:#fff!important;border-color:#3b82f6}
+.pg-add{color:#3b82f6;border:2px dashed #93c5fd}
+
+#topbar{
+  position:absolute;top:0;left:0;right:0;height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 10px;z-index:20;
+}
+#topbar.pan-hide{transform:translateY(-100%)}
+
+#drawer{
+  position:absolute;right:0;top:0;bottom:0;width:min(280px,80vw);
+  z-index:40;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#drawer.open{transform:translateX(0)}
+#drawer-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:39;
+  display:none;-webkit-tap-highlight-color:transparent;
+}
+#drawer-overlay.show{display:block}
+#drawer-body{overflow-y:auto;flex:1;padding:16px}
+
+#shapes-sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  border-radius:24px 24px 0 0;
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+  max-height:70vh;overflow-y:auto;
+}
+#shapes-sheet.open{transform:translateY(0)}
+#shapes-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:49;
+  display:none;backdrop-filter:blur(2px);
+}
+#shapes-overlay.show{display:block}
+.sheet-handle{width:40px;height:4px;background:#cbd5e1;border-radius:2px;margin:12px auto 8px}
+
+/* ─── FLOATING SELECTION BAR ─── */
+#sel-bar{
+  position:fixed;z-index:35;display:none;flex-wrap:wrap;
+  align-items:center;gap:3px;padding:6px 10px;border-radius:16px;
+  transform:translateX(-50%);pointer-events:auto;
+  max-width:calc(100vw - 20px);
+}
+#sel-bar.show{display:flex}
+.stb{
+  min-height:36px;padding:4px 8px;border-radius:8px;
+  display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;
+  cursor:pointer;border:none;background:transparent;color:#475569;
+  font-family:'Tajawal',sans-serif;-webkit-tap-highlight-color:transparent;
+}
+.stb:active{background:rgba(0,0,0,0.07);transform:scale(0.93)}
+.dk .stb{color:#94a3b8}
+.stb.stb-red{color:#ef4444}
+.stb.stb-on{background:#3b82f6!important;color:#fff!important;border-radius:8px}
+.stb.stb-grad-on{background:linear-gradient(135deg,#3b82f6,#ec4899)!important;color:#fff!important;border-radius:8px}
+.stb-sep{width:1px;height:22px;background:#e2e8f0;margin:0 1px;flex-shrink:0}
+.dk .stb-sep{background:#334155}
+
+#lay-panel{
+  position:absolute;left:4px;top:50%;transform:translateY(-50%);
+  width:min(210px,55vw);max-height:60vh;
+  display:flex;flex-direction:column;z-index:20;
+}
+#lay-panel.pan-hide{transform:translateY(-50%) translateX(-20px)}
+#lay-list{overflow-y:auto;flex:1}
+.li{
+  display:flex;align-items:center;gap:6px;padding:8px 8px;
+  border-radius:10px;border:2px solid transparent;margin-bottom:3px;
+  -webkit-tap-highlight-color:transparent;
+}
+.li:active{background:#f1f5f9}
+.li.sel{background:#eff6ff;border-color:#3b82f6}
+.dk .li:active{background:#1e293b}
+.dk .li.sel{background:#1e3a5f;border-color:#3b82f6}
+.lthumb{width:32px;height:32px;border-radius:6px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+
+.sep{width:1px;height:26px;background:#e2e8f0;margin:0 2px;flex-shrink:0}
+.dk .sep{background:#334155}
+
+input[type=color]{-webkit-appearance:none;border:none;border-radius:50%;overflow:hidden;cursor:pointer;padding:0;flex-shrink:0}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
+
+.mode-label{
+  position:absolute;top:62px;left:50%;transform:translateX(-50%);
+  background:rgba(59,130,246,0.9);color:#fff;
+  padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;
+  pointer-events:none;z-index:19;transition:opacity .3s;opacity:0;
+}
+.mode-label.show{opacity:1}
+
+#e-dot{
+  position:fixed;border-radius:50%;border:2px solid #ef4444;
+  pointer-events:none;z-index:9999;transform:translate(-50%,-50%);
+  background:rgba(239,68,68,0.12);display:none;
+}
+
+/* ─── Toggle pill style for hollow/gradient in sel-bar ─── */
+.sel-toggle{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 9px;border-radius:8px;border:1.5px solid #e2e8f0;
+  font-size:11px;font-weight:700;cursor:pointer;
+  background:transparent;color:#64748b;
+  font-family:'Tajawal',sans-serif;-webkit-tap-highlight-color:transparent;
+  min-height:30px;transition:all .15s;
+}
+.sel-toggle:active{transform:scale(0.93)}
+.sel-toggle.active-hol{background:#fef3c7;border-color:#f59e0b;color:#d97706}
+.sel-toggle.active-grad{background:linear-gradient(135deg,#dbeafe,#fce7f3);border-color:#a78bfa;color:#7c3aed}
+.dk .sel-toggle{border-color:#334155;color:#94a3b8}
+.dk .sel-toggle.active-hol{background:#422006;border-color:#f59e0b;color:#fbbf24}
+.dk .sel-toggle.active-grad{background:#1e1b4b;border-color:#7c3aed;color:#a78bfa}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div id="dash" class="w-full h-screen overflow-y-auto p-4 z-50 relative">
+  <div class="max-w-2xl mx-auto">
+    <div class="flex justify-between items-center mb-6 mt-2">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">سبوراتي</h1>
+        <p class="text-gray-400 text-xs mt-0.5">السبورة اللانهائية — نسخة اللمس</p>
+      </div>
+      <button onclick="openModal()" class="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg text-sm active:scale-95 transition-transform">
+        <i data-lucide="plus" style="width:16px;height:16px"></i> جديدة
+      </button>
+    </div>
+    <div id="boards-grid" class="grid grid-cols-2 gap-3"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="fixed inset-0 bg-black/50 items-center justify-center z-[60] p-4" style="display:none">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <h2 class="text-xl font-bold mb-4">سبورة جديدة</h2>
+    <input type="text" id="nb-title" class="w-full border border-gray-200 rounded-xl p-3 outline-none focus:border-blue-400 mb-4 text-sm" placeholder="اسم السبورة">
+    <div class="flex gap-3 mb-5">
+      <label class="flex-1 cursor-pointer">
+        <input type="radio" name="nb-theme" value="white" checked class="hidden peer">
+        <div class="border-2 border-gray-200 peer-checked:border-blue-500 rounded-xl p-3 text-center bg-white font-bold text-sm">بيضاء</div>
+      </label>
+      <label class="flex-1 cursor-pointer">
+        <input type="radio" name="nb-theme" value="black" class="hidden peer">
+        <div class="border-2 border-gray-700 peer-checked:border-blue-500 rounded-xl p-3 text-center bg-black text-white font-bold text-sm">سوداء</div>
+      </label>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="closeModal()" class="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm active:bg-gray-50">إلغاء</button>
+      <button onclick="createBoard()" class="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold active:bg-blue-700">إنشاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ BOARD VIEW ═══════════════ -->
+<div id="bv" class="hidden w-full h-screen relative">
+  <div id="cv-wrap"><canvas id="mc"></canvas></div>
+  <div id="e-dot"></div>
+
+  <button id="show-ui-btn" onclick="toggleUI()" style="display:none"
+    class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 bg-blue-600 text-white px-5 py-2.5 rounded-full shadow-xl pe font-bold text-sm flex items-center gap-2">
+    <i data-lucide="eye" style="width:14px;height:14px"></i> إظهار
+  </button>
+
+  <div id="ui">
+
+    <!-- ─── TOP BAR ─── -->
+    <div id="topbar" class="glass pe pan-anim">
+      <div class="flex items-center gap-1">
+        <button onclick="goHome()" class="tbt red" title="الرئيسية">
+          <i data-lucide="home" style="width:20px;height:20px"></i>
+        </button>
+        <button onclick="toggleUI()" class="tbt" title="إخفاء">
+          <i data-lucide="eye-off" style="width:18px;height:18px"></i>
+        </button>
+      </div>
+      <div id="mode-label" class="mode-label">تحديد</div>
+      <div class="flex items-center gap-1">
+        <button onclick="undo()" class="tbt"><i data-lucide="undo-2" style="width:18px;height:18px"></i></button>
+        <button onclick="redo()" class="tbt"><i data-lucide="redo-2" style="width:18px;height:18px"></i></button>
+        <button onclick="openDrawer()" class="tbt">
+          <i data-lucide="settings-2" style="width:18px;height:18px"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── BOTTOM TOOLBAR ─── -->
+    <div id="btoolbar" class="glass pe pan-anim">
+      <button onclick="setMode('select')" id="b-sel" class="tbt on" title="تحديد">
+        <i data-lucide="mouse-pointer-2" style="width:20px;height:20px"></i>
+      </button>
+      <button onclick="setMode('pan')" id="b-pan" class="tbt" title="تحريك">
+        <i data-lucide="hand" style="width:20px;height:20px"></i>
+      </button>
+      <button onclick="setMode('draw')" id="b-draw" class="tbt" title="قلم">
+        <i data-lucide="pen-tool" style="width:20px;height:20px"></i>
+      </button>
+      <button onclick="setMode('text')" id="b-text" class="tbt" title="نص">
+        <i data-lucide="type" style="width:20px;height:20px"></i>
+      </button>
+      <button onclick="openShapesSheet()" class="tbt" title="الأشكال">
+        <i data-lucide="shapes" style="width:20px;height:20px"></i>
+      </button>
+
+      <div class="sep"></div>
+
+      <button onclick="setMode('eraser')" id="b-eraser" class="tbt" title="ممحاة">
+        <i data-lucide="eraser" style="width:20px;height:20px"></i>
+      </button>
+      <button onclick="delSelected()" class="tbt red">
+        <i data-lucide="trash-2" style="width:20px;height:20px"></i>
+      </button>
+
+      <div class="sep"></div>
+
+      <!-- Colors -->
+      <input type="color" id="c1" value="#3b82f6" oninput="updateColors()" onchange="updateColors()" style="width:32px;height:32px" title="اللون">
+
+      <div class="sep"></div>
+
+      <button onclick="toggleLayers()" id="b-layers" class="tbt" title="الطبقات">
+        <i data-lucide="layers" style="width:20px;height:20px"></i>
+      </button>
+    </div>
+
+    <!-- ─── PAGES BAR ─── -->
+    <div id="pages-bar" class="glass pe pan-anim">
+      <div id="pages-inner" class="flex items-center gap-2"></div>
+    </div>
+
+    <!-- ─── LAYERS PANEL ─── -->
+    <div id="lay-panel" class="glass pe pan-anim pan-hide rounded-2xl p-3">
+      <div class="flex items-center justify-between mb-2 border-b pb-2">
+        <h3 class="font-bold text-sm" id="lay-title">الطبقات</h3>
+        <div class="flex gap-1">
+          <button onclick="layUp()" class="tbt p-0" style="min-width:28px;min-height:28px">
+            <i data-lucide="chevron-up" style="width:14px;height:14px"></i>
+          </button>
+          <button onclick="layDown()" class="tbt p-0" style="min-width:28px;min-height:28px">
+            <i data-lucide="chevron-down" style="width:14px;height:14px"></i>
+          </button>
+          <button onclick="delSelected()" class="tbt p-0 red" style="min-width:28px;min-height:28px">
+            <i data-lucide="trash-2" style="width:14px;height:14px"></i>
+          </button>
+        </div>
+      </div>
+      <div id="lay-list"></div>
+    </div>
+
+    <!-- ─── FLOATING SELECTION BAR ─── -->
+    <div id="sel-bar" class="glass pe">
+
+      <!-- Color picker -->
+      <div style="display:flex;align-items:center;gap:4px">
+        <i data-lucide="palette" style="width:13px;height:13px;color:#7c3aed;flex-shrink:0"></i>
+        <input type="color" id="sel-clr" style="width:24px;height:24px;outline:2px solid #e2e8f0;outline-offset:1px"
+          oninput="applySelColor(this.value)" onchange="applySelColor(this.value)" title="لون">
+      </div>
+
+      <!-- Second color for gradient -->
+      <div style="display:flex;align-items:center;gap:2px" id="sel-clr2-wrap">
+        <i data-lucide="arrow-left-right" style="width:10px;height:10px;color:#a78bfa;flex-shrink:0"></i>
+        <input type="color" id="sel-clr2" value="#ec4899" style="width:24px;height:24px;outline:2px solid #e2e8f0;outline-offset:1px"
+          oninput="applySelGradient()" onchange="applySelGradient()" title="لون التدرج">
+      </div>
+
+      <div class="stb-sep"></div>
+
+      <!-- Hollow toggle -->
+      <button id="sel-hol-btn" class="sel-toggle" onclick="toggleSelHollow()" title="تجويف">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+        مجوف
+      </button>
+
+      <!-- Gradient toggle -->
+      <button id="sel-grad-btn" class="sel-toggle" onclick="toggleSelGradient()" title="تدرج">
+        <svg width="13" height="13" viewBox="0 0 24 24"><defs><linearGradient id="gi" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#ec4899"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="3" fill="url(#gi)"/></svg>
+        تدرج
+      </button>
+
+      <div class="stb-sep"></div>
+
+      <!-- Rotation -->
+      <button class="stb" onclick="rotateSelected(-15)" title="تدوير يساراً">
+        <i data-lucide="rotate-ccw" style="width:13px;height:13px"></i>
+      </button>
+      <input type="number" id="rot-input" value="0" min="-360" max="360"
+        style="width:44px;height:28px;border:1px solid #e2e8f0;border-radius:6px;text-align:center;font-size:11px;font-family:Tajawal,sans-serif;outline:none"
+        oninput="setRotation(+this.value)">
+      <span style="font-size:10px;color:#94a3b8">°</span>
+      <button class="stb" onclick="rotateSelected(15)" title="تدوير يميناً">
+        <i data-lucide="rotate-cw" style="width:13px;height:13px"></i>
+      </button>
+
+      <div class="stb-sep"></div>
+
+      <button class="stb" onclick="dupSelected()" title="تكرار">
+        <i data-lucide="copy-plus" style="width:13px;height:13px"></i>
+      </button>
+      <button class="stb stb-red" onclick="delSelected()">
+        <i data-lucide="trash-2" style="width:13px;height:13px"></i>
+      </button>
+    </div>
+
+  </div><!-- /ui -->
+
+  <div id="drawer-overlay" onclick="closeDrawer()"></div>
+
+  <!-- ─── RIGHT DRAWER ─── -->
+  <div id="drawer" class="glass">
+    <div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #e2e8f0;flex-shrink:0">
+      <h2 class="font-bold text-base" id="dr-title">الإعدادات</h2>
+      <button onclick="closeDrawer()" class="tbt"><i data-lucide="x" style="width:18px;height:18px"></i></button>
+    </div>
+    <div id="drawer-body">
+
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1">حجم القلم / الممحاة / النص</label>
+        <input type="range" id="sz" min="1" max="150" value="20" class="w-full" oninput="updateSize(this.value)">
+        <div class="text-center text-xs mt-1 text-gray-400" id="sz-val">20px</div>
+      </div>
+
+      <div class="mb-4 flex items-center gap-3">
+        <label class="text-sm text-gray-600 flex-1">اللون الثانوي (تدرج)</label>
+        <input type="color" id="c2" value="#ec4899" style="width:32px;height:32px" oninput="updateColors()" onchange="updateColors()">
+        <label class="flex items-center gap-1 text-xs text-gray-600">
+          <input type="checkbox" id="chk-grad" onchange="updateColors()"> تدرج
+        </label>
+      </div>
+
+      <div class="mb-4 flex items-center gap-3">
+        <label class="text-sm text-gray-600 flex-1">رسم مجوف</label>
+        <label class="flex items-center gap-1 text-xs text-gray-600">
+          <input type="checkbox" id="chk-hol" onchange="updateColors()"> مجوف
+        </label>
+      </div>
+
+      <div class="border-t pt-4 mb-4">
+        <h4 class="font-bold text-sm mb-3 text-gray-600">الصور والخلفيات</h4>
+        <input type="file" id="img-up" accept="image/*" class="hidden" onchange="doImgUpload(event)">
+        <button onclick="document.getElementById('img-up').click()" class="w-full bg-blue-50 text-blue-600 py-3 rounded-xl text-sm mb-2 flex justify-center items-center gap-2 font-bold active:bg-blue-100">
+          <i data-lucide="image" style="width:14px;height:14px"></i> إدراج صورة
+        </button>
+        <input type="file" id="bg-up" accept="image/*" class="hidden" onchange="doBgUpload(event)">
+        <button onclick="document.getElementById('bg-up').click()" class="w-full bg-purple-50 text-purple-600 py-3 rounded-xl text-sm mb-2 flex justify-center items-center gap-2 font-bold active:bg-purple-100">
+          <i data-lucide="wallpaper" style="width:14px;height:14px"></i> تعيين خلفية
+        </button>
+        <button onclick="clearBg()" class="w-full bg-gray-100 text-gray-600 py-3 rounded-xl text-sm flex justify-center items-center gap-2 active:bg-gray-200">
+          <i data-lucide="eraser" style="width:14px;height:14px"></i> مسح الخلفية
+        </button>
+      </div>
+
+      <div id="img-resize" class="hidden border-t pt-4 mb-4">
+        <h4 class="font-bold text-sm mb-2 text-gray-600">أبعاد الصورة المحددة</h4>
+        <div class="flex gap-2">
+          <div class="flex-1"><label class="text-xs text-gray-400">عرض</label>
+            <input type="number" id="iw" class="w-full border rounded-lg p-2 text-sm text-black" onchange="resizeImg()"></div>
+          <div class="flex-1"><label class="text-xs text-gray-400">طول</label>
+            <input type="number" id="ih" class="w-full border rounded-lg p-2 text-sm text-black" onchange="resizeImg()"></div>
+        </div>
+      </div>
+
+      <div class="border-t pt-4 mb-4">
+        <h4 class="font-bold text-sm mb-3 text-gray-600">تحميل</h4>
+        <button onclick="exportPNG()" class="w-full py-3 rounded-xl text-sm mb-2 flex justify-center items-center gap-2 font-bold active:opacity-70" style="background:#fef2f2;color:#ef4444">
+          <i data-lucide="image" style="width:14px;height:14px"></i> <span style="color:#ef4444">تحميل PNG</span>
+        </button>
+        <button onclick="exportPDF()" class="w-full py-3 rounded-xl text-sm flex justify-center items-center gap-2 font-bold active:opacity-70" style="background:#fef2f2;color:#ef4444">
+          <i data-lucide="file-text" style="width:14px;height:14px"></i> <span style="color:#ef4444">تحميل PDF</span>
+        </button>
+      </div>
+
+      <div class="border-t pt-4">
+        <p class="text-xs text-gray-400 text-center">إصبعان: تكبير/تصغير وتدوير<br>إصبع واحد في وضع اليد: تحريك</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SHAPES BOTTOM SHEET ─── -->
+  <div id="shapes-overlay" onclick="closeShapesSheet()"></div>
+  <div id="shapes-sheet" class="glass pe">
+    <div class="sheet-handle"></div>
+    <div style="padding:0 16px 8px;display:flex;justify-content:space-between;align-items:center">
+      <h3 class="font-bold text-base">الأشكال</h3>
+      <button onclick="closeShapesSheet()" class="tbt"><i data-lucide="x" style="width:16px;height:16px"></i></button>
+    </div>
+    <div style="padding:0 16px 24px">
+      <div class="text-xs font-bold text-gray-400 mb-2">خطوط وأسهم</div>
+      <div class="grid grid-cols-4 gap-2 mb-4">
+        <button onclick="addShape('line');closeShapesSheet()" class="shape-btn">خط</button>
+        <button onclick="addShape('line-ar');closeShapesSheet()" class="shape-btn">← سهم</button>
+        <button onclick="addShape('line-al');closeShapesSheet()" class="shape-btn">سهم →</button>
+        <button onclick="addShape('line-ab');closeShapesSheet()" class="shape-btn">↔ سهمين</button>
+      </div>
+      <div class="text-xs font-bold text-gray-400 mb-2">ثنائية الأبعاد</div>
+      <div class="grid grid-cols-4 gap-2 mb-4">
+        <button onclick="addShape('triangle');closeShapesSheet()" class="shape-btn">مثلث</button>
+        <button onclick="addShape('square');closeShapesSheet()" class="shape-btn">مربع</button>
+        <button onclick="addShape('rect');closeShapesSheet()" class="shape-btn">مستطيل</button>
+        <button onclick="addShape('circle');closeShapesSheet()" class="shape-btn">دائرة</button>
+        <button onclick="addShape('ellipse');closeShapesSheet()" class="shape-btn">بيضوي</button>
+        <button onclick="addShape('semi');closeShapesSheet()" class="shape-btn">نصف دائرة</button>
+        <button onclick="addShape('rhombus');closeShapesSheet()" class="shape-btn">معين</button>
+        <button onclick="addShape('trap');closeShapesSheet()" class="shape-btn">شبه منحرف</button>
+        <button onclick="addShape('para');closeShapesSheet()" class="shape-btn">متوازي</button>
+        <button onclick="addShape('pent');closeShapesSheet()" class="shape-btn">خماسي</button>
+        <button onclick="addShape('hex');closeShapesSheet()" class="shape-btn">سداسي</button>
+        <button onclick="addShape('oct');closeShapesSheet()" class="shape-btn">ثماني</button>
+      </div>
+      <div class="text-xs font-bold text-gray-400 mb-2">ثلاثية الأبعاد</div>
+      <div class="grid grid-cols-4 gap-2">
+        <button onclick="addShape('cube');closeShapesSheet()" class="shape-btn">مكعب</button>
+        <button onclick="addShape('sphere');closeShapesSheet()" class="shape-btn">كرة</button>
+        <button onclick="addShape('cylinder');closeShapesSheet()" class="shape-btn">أسطوانة</button>
+        <button onclick="addShape('cone');closeShapesSheet()" class="shape-btn">مخروط</button>
+        <button onclick="addShape('pyramid');closeShapesSheet()" class="shape-btn">هرم</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /bv -->
+
+<style>
+.shape-btn{
+  padding:10px 4px;border-radius:10px;font-size:12px;font-weight:700;
+  color:#ef4444;background:#fff5f5;border:1px solid #fecaca;
+  -webkit-tap-highlight-color:transparent;
+  font-family:'Tajawal',sans-serif;
+}
+.shape-btn:active{background:#fee2e2;transform:scale(0.93)}
+</style>
+
+<script>
+lucide.createIcons();
+
+// ════ STATE ════
+let boards = JSON.parse(localStorage.getItem('ib_v2')||'[]');
+let currentBoardId = null;
+let canvas = null;
+let curMode = 'select';
+let hist = [], hIdx = -1, histLock = false;
+let clr1='#3b82f6', clr2='#ec4899', useGrad=false, hollow=false, sz=20;
+let layVisible = false;
+let isDark = false;
+let curPageIdx = 0;
+let uiOn = true;
+let clipboard = [];
+
+// Per-selection state (so toggling hollow/gradient is per-object)
+let selHollow = false;
+let selGrad = false;
+
+let touchState = { fingers:0, lastDist:0, lastAngle:0, lastX:0, lastY:0, isPinching:false, longPressTimer:null };
+
+// ════ DASHBOARD ════
+function initApp(){ renderDash(); }
+
+function renderDash(){
+  const g=document.getElementById('boards-grid');
+  g.innerHTML='';
+  if(!boards.length){
+    g.innerHTML='<div class="col-span-2 text-center text-gray-400 py-16 text-sm">لا توجد سبورات بعد<br>اضغط على "جديدة" لإنشاء سبورتك الأولى</div>';
+    return;
+  }
+  boards.forEach(b=>{
+    const c=document.createElement('div');
+    c.className='bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative';
+    const tc=b.theme==='black'?'bg-black text-white':'bg-gray-100 text-gray-600';
+    const pgCount=(b.pages||[]).length||1;
+    c.innerHTML=`
+      <div class="w-full h-20 ${tc} rounded-xl mb-3 flex items-center justify-center text-xs opacity-50">معاينة</div>
+      <p class="font-bold text-sm text-gray-800 truncate mb-0.5">${b.title}</p>
+      <p class="text-xs text-gray-400 mb-3">${pgCount} صفحة</p>
+      <button onclick="openBoard('${b.id}')" class="w-full bg-blue-50 text-blue-600 py-2 rounded-xl font-bold text-sm active:bg-blue-100">فتح</button>
+      <button onclick="delBoard('${b.id}')" class="absolute top-2 left-2 bg-white text-red-400 p-1.5 rounded-lg shadow-sm active:bg-red-50">
+        <i data-lucide="trash-2" style="width:12px;height:12px"></i>
+      </button>`;
+    g.appendChild(c);
+  });
+  lucide.createIcons();
+}
+
+function openModal(){ document.getElementById('modal').style.display='flex'; document.getElementById('nb-title').value=''; }
+function closeModal(){ document.getElementById('modal').style.display='none'; }
+
+function createBoard(){
+  const title=document.getElementById('nb-title').value.trim()||'سبورة بدون عنوان';
+  const theme=document.querySelector('input[name="nb-theme"]:checked').value;
+  const b={id:'b'+Date.now(),title,theme,pages:[{id:'pg'+Date.now(),data:null}],curPage:0,updatedAt:Date.now()};
+  boards.push(b); saveBoards(); closeModal(); openBoard(b.id);
+}
+
+function delBoard(id){ if(!confirm('حذف السبورة؟')) return; boards=boards.filter(x=>x.id!==id); saveBoards(); renderDash(); }
+function saveBoards(){ try{localStorage.setItem('ib_v2',JSON.stringify(boards));}catch(e){alert('مساحة التخزين ممتلئة!');} }
+
+function goHome(){
+  savePageData();
+  document.getElementById('bv').classList.add('hidden');
+  document.getElementById('dash').classList.remove('hidden');
+  if(canvas){ canvas.dispose(); canvas=null; }
+  renderDash();
+}
+
+// ════ OPEN BOARD ════
+function openBoard(id){
+  currentBoardId=id;
+  const b=boards.find(x=>x.id===id);
+  isDark=b.theme==='black';
+  if(!b.pages||!b.pages.length) b.pages=[{id:'pg0',data:null}];
+  if(b.curPage===undefined||b.curPage>=b.pages.length) b.curPage=0;
+  curPageIdx=b.curPage;
+
+  document.getElementById('dash').classList.add('hidden');
+  document.getElementById('bv').classList.remove('hidden');
+  applyTheme();
+
+  if(canvas){ canvas.dispose(); canvas=null; }
+  canvas=new fabric.Canvas('mc',{
+    width:window.innerWidth, height:window.innerHeight,
+    backgroundColor:isDark?'#000':'#fff',
+    preserveObjectStacking:true, selection:true,
+    allowTouchScrolling:true
+  });
+
+  const pd=b.pages[curPageIdx].data;
+  if(pd){ canvas.loadFromJSON(pd,()=>{ canvas.renderAll(); resetHist(); renderLayers(); }); }
+  else { resetHist(); }
+
+  setupTouchEvents();
+  setupCanvasEvents();
+  setMode('select');
+  updateColors();
+  renderPagesBar();
+  uiOn=true;
+  window.addEventListener('resize',onResize);
+}
+
+function applyTheme(){
+  ['topbar','btoolbar','lay-panel','pages-bar','drawer'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    isDark?el.classList.add('dk'):el.classList.remove('dk');
+  });
+  document.getElementById('bv').style.background=isDark?'#000':'#fff';
+  ['lay-title','dr-title'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.color=isDark?'#e2e8f0':'#1e293b';
+  });
+}
+
+function onResize(){
+  if(canvas){ canvas.setWidth(window.innerWidth); canvas.setHeight(window.innerHeight); canvas.renderAll(); }
+}
+
+function savePageData(){
+  if(!canvas||!currentBoardId) return;
+  const b=boards.find(x=>x.id===currentBoardId);
+  if(!b||!b.pages||!b.pages[curPageIdx]) return;
+  b.pages[curPageIdx].data=canvas.toJSON(['layerName']);
+  b.curPage=curPageIdx; b.updatedAt=Date.now(); saveBoards();
+}
+
+setInterval(()=>{ if(!document.getElementById('bv').classList.contains('hidden')) savePageData(); },5000);
+
+// ════ TOUCH EVENTS ════
+function setupTouchEvents(){
+  const cvEl = canvas.upperCanvasEl;
+  cvEl.addEventListener('touchstart', onTouchStart, {passive:false, capture:false});
+  cvEl.addEventListener('touchmove',  onTouchMove,  {passive:false, capture:false});
+  cvEl.addEventListener('touchend',   onTouchEnd,   {passive:false, capture:false});
+}
+
+function getTouchCenter(t1,t2){ return {x:(t1.clientX+t2.clientX)/2,y:(t1.clientY+t2.clientY)/2}; }
+function getTouchDist(t1,t2){ const dx=t1.clientX-t2.clientX,dy=t1.clientY-t2.clientY; return Math.sqrt(dx*dx+dy*dy); }
+
+function onTouchStart(e){
+  const touches=e.touches;
+  touchState.fingers=touches.length;
+  if(touches.length===1){
+    const t=touches[0];
+    touchState.lastX=t.clientX; touchState.lastY=t.clientY;
+    touchState.isPinching=false;
+    clearTimeout(touchState.longPressTimer);
+    touchState.longPressTimer=setTimeout(()=>{
+      showTouchCtxMenu(t.clientX,t.clientY,canvas.getPointer({clientX:t.clientX,clientY:t.clientY}));
+    },600);
+    if(curMode==='draw'||curMode==='eraser'||curMode==='pan') e.preventDefault();
+    if(curMode==='eraser'){
+      const p=canvas.getPointer({clientX:t.clientX,clientY:t.clientY,target:canvas.upperCanvasEl});
+      eraseAt(p);
+    }
+  } else if(touches.length===2){
+    clearTimeout(touchState.longPressTimer);
+    touchState.isPinching=true;
+    touchState.lastDist=getTouchDist(touches[0],touches[1]);
+    const c=getTouchCenter(touches[0],touches[1]);
+    touchState.lastX=c.x; touchState.lastY=c.y;
+  }
+}
+
+function onTouchMove(e){
+  if(touchState.fingers>=2||curMode==='pan'||curMode==='draw'||curMode==='eraser') e.preventDefault();
+  clearTimeout(touchState.longPressTimer);
+  const touches=e.touches;
+  if(touches.length===2){
+    const dist=getTouchDist(touches[0],touches[1]);
+    const center=getTouchCenter(touches[0],touches[1]);
+    const scale=dist/touchState.lastDist;
+    let z=canvas.getZoom()*scale;
+    z=Math.min(Math.max(z,0.02),20);
+    const cvRect=canvas.upperCanvasEl.getBoundingClientRect();
+    canvas.zoomToPoint({x:center.x-cvRect.left,y:center.y-cvRect.top},z);
+    const vpt=canvas.viewportTransform;
+    vpt[4]+=(center.x-touchState.lastX); vpt[5]+=(center.y-touchState.lastY);
+    canvas.requestRenderAll();
+    touchState.lastDist=dist; touchState.lastX=center.x; touchState.lastY=center.y;
+    return;
+  }
+  if(touches.length===1){
+    const t=touches[0];
+    const dx=t.clientX-touchState.lastX, dy=t.clientY-touchState.lastY;
+    if(curMode==='pan'){
+      const vpt=canvas.viewportTransform; vpt[4]+=dx; vpt[5]+=dy; canvas.requestRenderAll();
+    }
+    if(curMode==='eraser'){
+      const p=canvas.getPointer({clientX:t.clientX,clientY:t.clientY,target:canvas.upperCanvasEl});
+      eraseAt(p);
+      const dot=document.getElementById('e-dot'); const s=sz*2;
+      Object.assign(dot.style,{width:s+'px',height:s+'px',left:t.clientX+'px',top:t.clientY+'px',display:'block'});
+    }
+    touchState.lastX=t.clientX; touchState.lastY=t.clientY;
+  }
+}
+
+function onTouchEnd(e){
+  clearTimeout(touchState.longPressTimer);
+  touchState.isPinching=false; touchState.fingers=e.touches.length;
+  document.getElementById('e-dot').style.display='none';
+}
+
+// ════ CANVAS EVENTS ════
+function setupCanvasEvents(){
+  canvas.on('selection:created',handleSel);
+  canvas.on('selection:updated',handleSel);
+  canvas.on('selection:cleared',()=>{
+    document.getElementById('img-resize').classList.add('hidden');
+    hideSelBar(); renderLayers();
+  });
+  canvas.on('object:added',()=>{ if(!histLock){saveHist();renderLayers();} });
+  canvas.on('object:modified',()=>{ if(!histLock){saveHist();renderLayers();} if(canvas.getActiveObject()) showSelBar(); });
+  canvas.on('object:removed',()=>{ if(!histLock){saveHist();renderLayers();} });
+  canvas.on('mouse:down',function(opt){
+    if(curMode==='text'&&!opt.target){
+      const p=canvas.getPointer(opt.e); addText(p.x,p.y);
+    }
+  });
+}
+
+function handleSel(opt){
+  const obj=opt.selected&&opt.selected[0];
+  if(obj&&obj.type==='image'){
+    document.getElementById('img-resize').classList.remove('hidden');
+    document.getElementById('iw').value=Math.round(obj.width*obj.scaleX);
+    document.getElementById('ih').value=Math.round(obj.height*obj.scaleY);
+  } else { document.getElementById('img-resize').classList.add('hidden'); }
+  renderLayers();
+
+  // Detect current hollow/gradient state of selected object
+  if(obj && obj.type!=='image' && obj.type!=='i-text'){
+    selHollow = (obj.fill==='transparent'||obj.fill===''||!obj.fill);
+    selGrad = obj.fill && typeof obj.fill==='object' && obj.fill.type==='linear';
+  } else {
+    selHollow=false; selGrad=false;
+  }
+  updateSelToggleUI();
+  showSelBar();
+}
+
+// ════ ERASER ════
+let erasedSet=new Set();
+document.addEventListener('touchend',()=>erasedSet.clear());
+document.addEventListener('mouseup',()=>erasedSet.clear());
+
+function eraseAt(p){
+  const r=sz;
+  canvas.getObjects().filter(obj=>{
+    if(obj.type==='activeSelection') return false;
+    const bd=obj.getBoundingRect(true);
+    return p.x>=bd.left-r&&p.x<=bd.left+bd.width+r&&p.y>=bd.top-r&&p.y<=bd.top+bd.height+r;
+  }).forEach(obj=>{
+    const uid=obj.__uid||(obj.__uid=Math.random().toString(36));
+    if(!erasedSet.has(uid)){ erasedSet.add(uid); canvas.remove(obj); }
+  });
+  canvas.renderAll();
+}
+
+// ════ MODES ════
+const modeNames={select:'تحديد',pan:'تحريك',draw:'رسم',text:'نص',eraser:'ممحاة'};
+
+function setMode(m){
+  curMode=m;
+  canvas.isDrawingMode=false; canvas.selection=false; canvas.defaultCursor='default';
+  ['sel','pan','draw','text','eraser'].forEach(id=>{ const el=document.getElementById('b-'+id); if(el) el.classList.remove('on'); });
+  const map={select:'sel',pan:'pan',draw:'draw',text:'text',eraser:'eraser'};
+  if(map[m]){ const el=document.getElementById('b-'+map[m]); if(el) el.classList.add('on'); }
+  if(m==='select'){ canvas.selection=true; canvas.forEachObject(o=>{o.selectable=true;o.evented=true;}); }
+  else if(m==='pan'){ canvas.defaultCursor='grab'; }
+  else if(m==='draw'){ canvas.isDrawingMode=true; setupBrush(); }
+  else if(m==='text'){ canvas.defaultCursor='crosshair'; canvas.selection=false; canvas.forEachObject(o=>{o.selectable=false;o.evented=false;}); }
+  else if(m==='eraser'){ canvas.selection=false; }
+  if(m!=='select') hideSelBar();
+  const lbl=document.getElementById('mode-label');
+  lbl.textContent=modeNames[m]||m; lbl.classList.add('show');
+  setTimeout(()=>lbl.classList.remove('show'),1200);
+}
+
+// ════ COLORS ════
+function updateColors(){
+  clr1=document.getElementById('c1').value;
+  clr2=document.getElementById('c2').value;
+  useGrad=document.getElementById('chk-grad').checked;
+  hollow=document.getElementById('chk-hol').checked;
+  if(curMode==='draw') setupBrush();
+}
+
+function updateSize(v){
+  sz=parseInt(v);
+  document.getElementById('sz-val').innerText=sz+'px';
+  if(curMode==='draw') setupBrush();
+}
+
+function getFill(c1override, c2override, gradOverride){
+  const g=gradOverride!==undefined?gradOverride:useGrad;
+  const cc1=c1override||clr1;
+  const cc2=c2override||clr2;
+  if(!g) return cc1;
+  return new fabric.Gradient({type:'linear',coords:{x1:0,y1:0,x2:100,y2:100},colorStops:[{offset:0,color:cc1},{offset:1,color:cc2}]});
+}
+
+function applyStyle(obj, hollowOverride, c1override, c2override, gradOverride){
+  const hol = hollowOverride!==undefined ? hollowOverride : hollow;
+  if(hol){ obj.set({fill:'transparent',stroke:c1override||clr1,strokeWidth:Math.max(2,sz/5)}); }
+  else { obj.set({fill:getFill(c1override,c2override,gradOverride),stroke:'transparent',strokeWidth:0}); }
+}
+
+function setupBrush(){
+  canvas.freeDrawingBrush=new fabric.PencilBrush(canvas);
+  canvas.freeDrawingBrush.color=clr1;
+  canvas.freeDrawingBrush.width=sz;
+}
+
+// ════ SELECTION BAR — HOLLOW / GRADIENT TOGGLES ════
+function updateSelToggleUI(){
+  const hb=document.getElementById('sel-hol-btn');
+  const gb=document.getElementById('sel-grad-btn');
+  const c2w=document.getElementById('sel-clr2-wrap');
+  if(hb){ selHollow?hb.classList.add('active-hol'):hb.classList.remove('active-hol'); }
+  if(gb){ selGrad?gb.classList.add('active-grad'):gb.classList.remove('active-grad'); }
+  // Only show second color picker when gradient is on and not hollow
+  if(c2w){ c2w.style.display=(selGrad&&!selHollow)?'flex':'none'; }
+}
+
+function toggleSelHollow(){
+  const objs=canvas.getActiveObjects();
+  if(!objs.length) return;
+  selHollow=!selHollow;
+  if(selHollow) selGrad=false; // hollow + gradient doesn't make sense
+  objs.forEach(obj=>{
+    if(obj.type==='image'||obj.type==='i-text') return;
+    const strokeColor = (typeof obj.fill==='string'&&obj.fill!=='transparent') ? obj.fill :
+                        (typeof obj.stroke==='string'&&obj.stroke!=='transparent') ? obj.stroke : clr1;
+    if(selHollow){
+      obj.set({fill:'transparent', stroke:strokeColor||clr1, strokeWidth:Math.max(2,sz/5)});
+    } else {
+      obj.set({fill:strokeColor||clr1, stroke:'transparent', strokeWidth:0});
+    }
+  });
+  canvas.renderAll(); saveHist(); updateSelToggleUI();
+}
+
+function toggleSelGradient(){
+  const objs=canvas.getActiveObjects();
+  if(!objs.length) return;
+  selGrad=!selGrad;
+  if(selGrad) selHollow=false;
+  const c1=document.getElementById('sel-clr').value||clr1;
+  const c2=document.getElementById('sel-clr2').value||clr2;
+  objs.forEach(obj=>{
+    if(obj.type==='image'||obj.type==='i-text') return;
+    if(selGrad){
+      obj.set({fill:new fabric.Gradient({type:'linear',coords:{x1:0,y1:0,x2:obj.width||100,y2:obj.height||100},
+        colorStops:[{offset:0,color:c1},{offset:1,color:c2}]}), stroke:'transparent', strokeWidth:0});
+    } else {
+      obj.set({fill:c1, stroke:'transparent', strokeWidth:0});
+    }
+  });
+  canvas.renderAll(); saveHist(); updateSelToggleUI();
+}
+
+function applySelGradient(){
+  if(!selGrad) return;
+  const objs=canvas.getActiveObjects();
+  if(!objs.length) return;
+  const c1=document.getElementById('sel-clr').value||clr1;
+  const c2=document.getElementById('sel-clr2').value||clr2;
+  objs.forEach(obj=>{
+    if(obj.type==='image'||obj.type==='i-text') return;
+    obj.set({fill:new fabric.Gradient({type:'linear',coords:{x1:0,y1:0,x2:obj.width||100,y2:obj.height||100},
+      colorStops:[{offset:0,color:c1},{offset:1,color:c2}]})});
+  });
+  canvas.renderAll(); saveHist();
+}
+
+// ════ ACTIONS ════
+function delSelected(){
+  if(!canvas) return;
+  const objs=canvas.getActiveObjects();
+  if(objs.length){ canvas.discardActiveObject(); objs.forEach(o=>canvas.remove(o)); }
+}
+
+function addText(x,y){
+  canvas.forEachObject(o=>{o.selectable=true;o.evented=true;});
+  canvas.selection=true;
+  const t=new fabric.IText('نص جديد',{
+    left:x,top:y,fontFamily:'Tajawal',fill:getFill(),
+    fontSize:sz>10?sz:36,direction:'rtl',originX:'left',originY:'top',layerName:'نص'
+  });
+  canvas.add(t); canvas.setActiveObject(t);
+  t.enterEditing(); t.selectAll();
+  t.on('editing:exited',()=>setMode('select'));
+}
+
+// ════ COPY / PASTE ════
+function copySelected(){
+  const objs=canvas.getActiveObjects(); if(!objs.length) return;
+  clipboard=[];
+  canvas.getActiveObject().clone(cloned=>{ clipboard=[cloned]; });
+}
+
+function pasteClipboard(){
+  if(!clipboard.length) return;
+  clipboard[0].clone(cloned=>{
+    canvas.discardActiveObject();
+    if(cloned.type==='activeSelection'){
+      cloned.canvas=canvas;
+      cloned.forEachObject(obj=>{obj.set({left:obj.left+20,top:obj.top+20});canvas.add(obj);});
+      cloned.setCoords();
+    } else {
+      cloned.set({left:cloned.left+20,top:cloned.top+20,layerName:cloned.layerName||'نسخة'});
+      canvas.add(cloned);
+    }
+    canvas.setActiveObject(cloned); canvas.requestRenderAll(); saveHist(); showSelBar();
+  });
+}
+
+function dupSelected(){ copySelected(); setTimeout(pasteClipboard,30); }
+
+function pasteAtPoint(x,y){
+  removeTouchCtxMenu();
+  if(!clipboard.length) return;
+  clipboard[0].clone(cloned=>{
+    canvas.discardActiveObject();
+    if(cloned.type==='activeSelection'){
+      cloned.canvas=canvas;
+      const ox=x-(cloned.left||0),oy=y-(cloned.top||0);
+      cloned.forEachObject(obj=>{obj.set({left:obj.left+ox,top:obj.top+oy});canvas.add(obj);});
+      cloned.setCoords();
+    } else {
+      cloned.set({left:x,top:y,layerName:cloned.layerName||'نسخة'});
+      canvas.add(cloned);
+    }
+    canvas.setActiveObject(cloned); canvas.requestRenderAll(); saveHist(); showSelBar();
+  });
+}
+
+// ════ LONG PRESS CTX MENU ════
+let touchCtxMenu=null;
+function showTouchCtxMenu(clientX,clientY,pointer){
+  removeTouchCtxMenu();
+  const hasClip=clipboard.length>0; const hasSel=canvas.getActiveObjects().length>0;
+  if(!hasClip&&!hasSel) return;
+  const m=document.createElement('div');
+  m.id='touch-ctx'; m.className='glass pe rounded-2xl p-2';
+  if(isDark) m.classList.add('dk');
+  const left=Math.min(clientX,window.innerWidth-200); const top=Math.max(10,clientY-160);
+  m.style.cssText=`position:fixed;left:${left}px;top:${top}px;z-index:9999;min-width:180px;font-family:Tajawal,sans-serif`;
+  m.innerHTML=`
+    ${hasClip?`<button onclick="pasteAtPoint(${pointer.x},${pointer.y})" class="ctx-btn ctx-purple">
+      <i data-lucide="clipboard-paste" style="width:15px;height:15px"></i><span>لصق هنا</span>
+    </button><div class="ctx-sep"></div>`:''}
+    ${hasSel?`
+    <button onclick="copySelected();removeTouchCtxMenu()" class="ctx-btn">
+      <i data-lucide="copy" style="width:15px;height:15px"></i><span>نسخ</span>
+    </button>
+    <button onclick="dupSelected();removeTouchCtxMenu()" class="ctx-btn">
+      <i data-lucide="copy-plus" style="width:15px;height:15px"></i><span>تكرار</span>
+    </button>
+    <div class="ctx-sep"></div>
+    <button onclick="delSelected();removeTouchCtxMenu()" class="ctx-btn ctx-red">
+      <i data-lucide="trash-2" style="width:15px;height:15px"></i><span>حذف</span>
+    </button>`:''}
+  `;
+  document.body.appendChild(m); touchCtxMenu=m; lucide.createIcons();
+  setTimeout(()=>{
+    function outside(e){ if(touchCtxMenu&&!touchCtxMenu.contains(e.target)){ removeTouchCtxMenu(); } }
+    document.addEventListener('touchstart',outside,{once:true,passive:true});
+  },80);
+}
+function removeTouchCtxMenu(){ if(touchCtxMenu){touchCtxMenu.remove();touchCtxMenu=null;} }
+
+// ════ SHAPES ════
+function addShape(type){
+  let obj;
+  const v=canvas.viewportTransform;
+  const cx=(canvas.width/2-v[4])/v[0];
+  const cy=(canvas.height/2-v[5])/v[3];
+  const d=100;
+  const b={left:cx,top:cy,originX:'center',originY:'center',strokeUniform:true,layerName:type};
+  switch(type){
+    case 'line': obj=new fabric.Line([-d,0,d,0],{...b,stroke:clr1,strokeWidth:Math.max(2,sz/5),fill:'transparent'}); break;
+    case 'line-ar': obj=new fabric.Path(`M -${d} 0 L ${d} 0 M ${d-20} -20 L ${d} 0 L ${d-20} 20`,{...b,fill:'transparent',stroke:clr1,strokeWidth:Math.max(2,sz/5)}); break;
+    case 'line-al': obj=new fabric.Path(`M ${d} 0 L -${d} 0 M ${-d+20} -20 L -${d} 0 L ${-d+20} 20`,{...b,fill:'transparent',stroke:clr1,strokeWidth:Math.max(2,sz/5)}); break;
+    case 'line-ab': obj=new fabric.Path(`M -${d} 0 L ${d} 0 M ${d-20} -20 L ${d} 0 L ${d-20} 20 M ${-d+20} -20 L -${d} 0 L ${-d+20} 20`,{...b,fill:'transparent',stroke:clr1,strokeWidth:Math.max(2,sz/5)}); break;
+    case 'triangle': obj=new fabric.Triangle({...b,width:d,height:d}); applyStyle(obj); break;
+    case 'square': obj=new fabric.Rect({...b,width:d,height:d}); applyStyle(obj); break;
+    case 'rect': obj=new fabric.Rect({...b,width:d*2,height:d}); applyStyle(obj); break;
+    case 'circle': obj=new fabric.Circle({...b,radius:d/2}); applyStyle(obj); break;
+    case 'ellipse': obj=new fabric.Ellipse({...b,rx:d,ry:d/2}); applyStyle(obj); break;
+    case 'semi': obj=new fabric.Path(`M -${d} 0 A ${d} ${d} 0 0 1 ${d} 0 Z`,{...b}); applyStyle(obj); break;
+    case 'para': obj=new fabric.Polygon([{x:30,y:0},{x:130,y:0},{x:100,y:70},{x:0,y:70}],{...b}); applyStyle(obj); break;
+    case 'rhombus': obj=new fabric.Polygon([{x:50,y:0},{x:100,y:50},{x:50,y:100},{x:0,y:50}],{...b}); applyStyle(obj); break;
+    case 'trap': obj=new fabric.Polygon([{x:30,y:0},{x:70,y:0},{x:100,y:70},{x:0,y:70}],{...b}); applyStyle(obj); break;
+    case 'pent': obj=ngon(5,d,b); break;
+    case 'hex': obj=ngon(6,d,b); break;
+    case 'oct': obj=ngon(8,d,b); break;
+    case 'cube': obj=new fabric.Path(`M 0 -50 L 86 0 L 86 100 L 0 150 L -86 100 L -86 0 Z M 0 -50 L 0 50 M -86 0 L 0 50 L 86 0 M 0 50 L 0 150`,{...b,fill:'transparent',stroke:clr1,strokeWidth:2,scaleX:.8,scaleY:.8}); break;
+    case 'cylinder': obj=new fabric.Path(`M -50 -50 C -50 -70,50 -70,50 -50 L 50 50 C 50 70,-50 70,-50 50 Z M -50 -50 C -50 -30,50 -30,50 -50`,{...b,fill:'transparent',stroke:clr1,strokeWidth:2,scaleX:1.5,scaleY:1.5}); break;
+    case 'cone': obj=new fabric.Path(`M 0 -80 L -50 50 C -50 70,50 70,50 50 Z M -50 50 C -50 30,50 30,50 50`,{...b,fill:'transparent',stroke:clr1,strokeWidth:2,scaleX:1.5,scaleY:1.5}); break;
+    case 'pyramid': obj=new fabric.Path(`M 0 -80 L -60 40 L 0 80 L 60 40 Z M 0 -80 L 0 80`,{...b,fill:'transparent',stroke:clr1,strokeWidth:2,scaleX:1.5,scaleY:1.5}); break;
+    case 'sphere':
+      obj=new fabric.Circle({...b,radius:d});
+      obj.set('fill',new fabric.Gradient({type:'radial',coords:{r1:0,r2:d,x1:-d/3,y1:-d/3,x2:0,y2:0},colorStops:[{offset:0,color:'#fff'},{offset:1,color:clr1}]}));
+      break;
+  }
+  if(obj){ canvas.add(obj); canvas.setActiveObject(obj); setMode('select'); }
+}
+
+function ngon(sides,r,base){
+  const pts=[];
+  for(let i=0;i<sides;i++){
+    const a=(i/sides)*2*Math.PI-Math.PI/2;
+    pts.push({x:r*Math.cos(a),y:r*Math.sin(a)});
+  }
+  const p=new fabric.Polygon(pts,{...base}); applyStyle(p); return p;
+}
+
+// ════ IMAGES ════
+function doImgUpload(e){
+  const f=e.target.files[0]; if(!f) return; closeDrawer();
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    fabric.Image.fromURL(ev.target.result,img=>{
+      if(img.width>window.innerWidth*0.7) img.scaleToWidth(window.innerWidth*0.7);
+      const v=canvas.viewportTransform;
+      img.set({left:(canvas.width/2-v[4])/v[0],top:(canvas.height/2-v[5])/v[3],originX:'center',originY:'center',layerName:'صورة'});
+      canvas.add(img); canvas.setActiveObject(img); setMode('select');
+    });
+  };
+  rd.readAsDataURL(f);
+}
+
+function doBgUpload(e){
+  const f=e.target.files[0]; if(!f) return; closeDrawer();
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    fabric.Image.fromURL(ev.target.result,img=>{
+      canvas.setBackgroundImage(img,canvas.renderAll.bind(canvas),{scaleX:canvas.width/img.width,scaleY:canvas.height/img.height});
+      saveHist();
+    });
+  };
+  rd.readAsDataURL(f);
+}
+
+function clearBg(){
+  canvas.setBackgroundImage(null,canvas.renderAll.bind(canvas));
+  canvas.backgroundColor=isDark?'#000':'#fff';
+  canvas.renderAll(); saveHist(); closeDrawer();
+}
+
+function resizeImg(){
+  const obj=canvas.getActiveObject(); if(!obj||obj.type!=='image') return;
+  const w=parseFloat(document.getElementById('iw').value); const h=parseFloat(document.getElementById('ih').value);
+  if(w&&h){ obj.scaleX=w/obj.width; obj.scaleY=h/obj.height; canvas.renderAll(); saveHist(); }
+}
+
+// ════ HISTORY ════
+function resetHist(){ hist=[canvas.toJSON(['layerName'])]; hIdx=0; }
+function saveHist(){
+  if(histLock) return;
+  if(hIdx<hist.length-1) hist=hist.slice(0,hIdx+1);
+  hist.push(canvas.toJSON(['layerName']));
+  if(hist.length>30) hist.shift(); else hIdx++;
+}
+function undo(){
+  if(hIdx>0){ histLock=true; hIdx--; canvas.loadFromJSON(hist[hIdx],()=>{ canvas.renderAll(); histLock=false; renderLayers(); }); }
+}
+function redo(){
+  if(hIdx<hist.length-1){ histLock=true; hIdx++; canvas.loadFromJSON(hist[hIdx],()=>{ canvas.renderAll(); histLock=false; renderLayers(); }); }
+}
+
+// ════ SELECTION BAR ════
+function showSelBar(){
+  const bar=document.getElementById('sel-bar');
+  const objs=canvas.getActiveObjects();
+  if(!objs||!objs.length){ bar.classList.remove('show'); return; }
+  const sel=canvas.getActiveObject();
+  const bd=sel.getBoundingRect(true);
+  const vpt=canvas.viewportTransform;
+  const screenX=(bd.left+bd.width/2)*vpt[0]+vpt[4];
+  const screenY=bd.top*vpt[3]+vpt[5]-68;
+  bar.style.left=screenX+'px';
+  bar.style.top=Math.max(62,screenY)+'px';
+  const firstObj=objs[0];
+  let fc='#3b82f6';
+  if(firstObj.fill&&typeof firstObj.fill==='string'&&firstObj.fill!=='transparent') fc=firstObj.fill;
+  else if(firstObj.stroke&&typeof firstObj.stroke==='string'&&firstObj.stroke!=='transparent') fc=firstObj.stroke;
+  document.getElementById('sel-clr').value=fc.startsWith('#')?fc:'#3b82f6';
+  const ri=document.getElementById('rot-input');
+  if(ri){ ri.value=Math.round((sel.angle)||0); ri.style.background=isDark?'#1e293b':'#fff'; ri.style.color=isDark?'#e2e8f0':'#334155'; ri.style.borderColor=isDark?'#334155':'#e2e8f0'; }
+
+  // Hide hollow/gradient toggles for images and text
+  const isShape = firstObj.type!=='image' && firstObj.type!=='i-text';
+  document.getElementById('sel-hol-btn').style.display = isShape?'':'none';
+  document.getElementById('sel-grad-btn').style.display = isShape?'':'none';
+
+  isDark?bar.classList.add('dk'):bar.classList.remove('dk');
+  bar.classList.add('show');
+  updateSelToggleUI();
+}
+
+function hideSelBar(){ const bar=document.getElementById('sel-bar'); if(bar) bar.classList.remove('show'); }
+
+function applySelColor(color){
+  const objs=canvas.getActiveObjects();
+  objs.forEach(obj=>{
+    if(obj.type==='i-text') obj.set('fill',color);
+    else if(selHollow) obj.set('stroke',color);
+    else if(selGrad){
+      // Update gradient start color
+      const c2=document.getElementById('sel-clr2').value||clr2;
+      obj.set({fill:new fabric.Gradient({type:'linear',coords:{x1:0,y1:0,x2:obj.width||100,y2:obj.height||100},
+        colorStops:[{offset:0,color:color},{offset:1,color:c2}]})});
+    }
+    else obj.set('fill',color);
+  });
+  canvas.renderAll(); saveHist();
+}
+
+function rotateSelected(delta){
+  const active=canvas.getActiveObject(); if(!active) return;
+  const newAngle=((active.angle||0)+delta+360)%360;
+  active.set('angle',newAngle); active.setCoords();
+  canvas.renderAll(); saveHist();
+  const ri=document.getElementById('rot-input'); if(ri) ri.value=Math.round(newAngle);
+}
+
+function setRotation(angle){
+  const active=canvas.getActiveObject(); if(!active) return;
+  active.set('angle',((angle%360)+360)%360); active.setCoords(); canvas.renderAll(); saveHist();
+}
+
+// ════ LAYERS ════
+function toggleLayers(){
+  layVisible=!layVisible;
+  const panel=document.getElementById('lay-panel'); const btn=document.getElementById('b-layers');
+  if(layVisible){ panel.classList.remove('pan-hide'); btn.classList.add('on'); renderLayers(); }
+  else { panel.classList.add('pan-hide'); btn.classList.remove('on'); }
+}
+
+function getIcon(obj){
+  const t=obj.type;
+  if(t==='i-text'||t==='text') return '📝';
+  if(t==='image') return '🖼️';
+  if(t==='path') return '✏️';
+  if(t==='circle') return '⭕';
+  if(t==='rect') return '▭';
+  if(t==='triangle') return '△';
+  return '◻';
+}
+function getLName(obj,idx){
+  if(obj.layerName) return obj.layerName;
+  const t=obj.type;
+  if(t==='i-text') return 'نص'; if(t==='image') return 'صورة'; if(t==='path') return 'رسم';
+  if(t==='circle') return 'دائرة'; if(t==='rect') return 'مستطيل'; return 'عنصر '+(idx+1);
+}
+
+function renderLayers(){
+  if(!layVisible||!canvas) return;
+  const list=document.getElementById('lay-list'); const objs=canvas.getObjects(); const actives=canvas.getActiveObjects();
+  list.innerHTML='';
+  [...objs].reverse().forEach((obj,ri)=>{
+    const real=objs.length-1-ri; const isSel=actives.includes(obj); const isHid=obj.visible===false;
+    const item=document.createElement('div'); item.className='li'+(isSel?' sel':'');
+    const tb=isDark?'#1e293b':'#f1f5f9'; const nc=isDark?'#e2e8f0':'#334155';
+    item.innerHTML=`
+      <div class="lthumb" style="background:${tb}">${getIcon(obj)}</div>
+      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${nc}">${getLName(obj,real)}</span>
+      <button class="vis-btn" style="opacity:${isHid?1:0.45};padding:4px;border-radius:4px;line-height:0;background:none;border:none;cursor:pointer">
+        <i data-lucide="${isHid?'eye-off':'eye'}" style="width:13px;height:13px;color:${isDark?'#94a3b8':'#64748b'}"></i>
+      </button>`;
+    item.addEventListener('touchend',ev=>{ if(ev.target.closest('.vis-btn')) return; setMode('select'); canvas.setActiveObject(obj); canvas.requestRenderAll(); renderLayers(); },{passive:true});
+    item.querySelector('.vis-btn').addEventListener('touchend',ev=>{ ev.stopPropagation(); obj.visible=!obj.visible; canvas.renderAll(); renderLayers(); saveHist(); },{passive:true});
+    list.appendChild(item);
+  });
+  lucide.createIcons();
+}
+
+function layUp(){ const a=canvas&&canvas.getActiveObject(); if(!a) return; canvas.bringForward(a); canvas.renderAll(); renderLayers(); saveHist(); }
+function layDown(){ const a=canvas&&canvas.getActiveObject(); if(!a) return; canvas.sendBackwards(a); canvas.renderAll(); renderLayers(); saveHist(); }
+
+// ════ PAGES ════
+function renderPagesBar(){
+  const b=boards.find(x=>x.id===currentBoardId); if(!b) return;
+  const inner=document.getElementById('pages-inner'); inner.innerHTML='';
+  b.pages.forEach((pg,i)=>{
+    const wrap=document.createElement('div');
+    wrap.style.cssText='display:flex;align-items:center;gap:3px;flex-shrink:0';
+    const btn=document.createElement('div');
+    btn.className='pg-btn'+(i===curPageIdx?' cur':'');
+    if(isDark&&i!==curPageIdx){ btn.style.background='rgba(22,32,50,0.95)'; btn.style.color='#94a3b8'; }
+    btn.textContent=''+(i+1);
+    let pgMoved=false;
+    btn.addEventListener('touchstart',()=>{pgMoved=false;},{passive:true});
+    btn.addEventListener('touchmove',()=>{pgMoved=true;},{passive:true});
+    btn.addEventListener('touchend',()=>{ if(!pgMoved) switchPage(i); },{passive:true});
+    btn.addEventListener('click',()=>switchPage(i));
+    wrap.appendChild(btn);
+    if(b.pages.length>1){
+      const del=document.createElement('button');
+      del.style.cssText=`width:28px;height:28px;border-radius:8px;border:none;background:${isDark?'rgba(239,68,68,0.15)':'rgba(239,68,68,0.1)'};color:#ef4444;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;font-size:0;`;
+      del.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+      let delMoved=false;
+      del.addEventListener('touchstart',e=>{e.stopPropagation();delMoved=false;},{passive:true});
+      del.addEventListener('touchmove',()=>{delMoved=true;},{passive:true});
+      del.addEventListener('touchend',e=>{ e.stopPropagation(); if(!delMoved) deletePage(i); },{passive:true});
+      del.addEventListener('click',e=>{e.stopPropagation();deletePage(i);});
+      wrap.appendChild(del);
+    }
+    inner.appendChild(wrap);
+  });
+  const add=document.createElement('div');
+  add.className='pg-btn pg-add';
+  if(isDark){ add.style.background='rgba(22,32,50,0.95)'; add.style.borderColor='#1e40af'; add.style.color='#60a5fa'; }
+  add.innerHTML='<i data-lucide="plus" style="width:14px;height:14px"></i>';
+  let addMoved=false;
+  add.addEventListener('touchstart',()=>{addMoved=false;},{passive:true});
+  add.addEventListener('touchmove',()=>{addMoved=true;},{passive:true});
+  add.addEventListener('touchend',e=>{ if(!addMoved){e.stopPropagation();addPage();} },{passive:true});
+  add.addEventListener('click',e=>{e.stopPropagation();addPage();});
+  inner.appendChild(add);
+  lucide.createIcons();
+}
+
+function switchPage(idx){
+  if(idx===curPageIdx) return;
+  savePageData(); curPageIdx=idx;
+  const b=boards.find(x=>x.id===currentBoardId); b.curPage=curPageIdx;
+  hist=[]; hIdx=-1; canvas.clear(); canvas.backgroundColor=isDark?'#000':'#fff';
+  const pd=b.pages[curPageIdx].data;
+  if(pd){ canvas.loadFromJSON(pd,()=>{ canvas.renderAll(); resetHist(); renderLayers(); }); }
+  else { canvas.renderAll(); resetHist(); renderLayers(); }
+  renderPagesBar();
+}
+
+function addPage(){
+  savePageData();
+  const b=boards.find(x=>x.id===currentBoardId);
+  b.pages.push({id:'pg'+Date.now(),data:null}); saveBoards();
+  switchPage(b.pages.length-1);
+}
+
+function deletePage(idx){
+  const b=boards.find(x=>x.id===currentBoardId);
+  if(b.pages.length<=1) return;
+  b.pages.splice(idx,1);
+  const ni=Math.min(curPageIdx,b.pages.length-1);
+  curPageIdx=ni; b.curPage=ni; saveBoards();
+  hist=[]; hIdx=-1; canvas.clear(); canvas.backgroundColor=isDark?'#000':'#fff';
+  const pd=b.pages[curPageIdx].data;
+  if(pd){ canvas.loadFromJSON(pd,()=>{ canvas.renderAll(); resetHist(); renderLayers(); }); }
+  else { canvas.renderAll(); resetHist(); renderLayers(); }
+  renderPagesBar();
+}
+
+// ════ DRAWER / SHEET / UI ════
+function openDrawer(){ document.getElementById('drawer').classList.add('open'); document.getElementById('drawer-overlay').classList.add('show'); }
+function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('drawer-overlay').classList.remove('show'); }
+function openShapesSheet(){ document.getElementById('shapes-sheet').classList.add('open'); document.getElementById('shapes-overlay').classList.add('show'); }
+function closeShapesSheet(){ document.getElementById('shapes-sheet').classList.remove('open'); document.getElementById('shapes-overlay').classList.remove('show'); }
+
+function toggleUI(){
+  uiOn=!uiOn;
+  ['topbar','btoolbar','lay-panel','pages-bar'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    uiOn?el.classList.remove('pan-hide'):el.classList.add('pan-hide');
+  });
+  const sb=document.getElementById('show-ui-btn');
+  uiOn?sb.style.display='none':sb.style.display='flex';
+}
+
+// ════ EXPORT ════
+function exportPNG(){
+  const a=document.createElement('a'); a.download='board.png'; a.href=canvas.toDataURL({format:'png',quality:1}); a.click(); closeDrawer();
+}
+function exportPDF(){
+  const data=canvas.toDataURL({format:'png',quality:1});
+  const pdf=new jspdf.jsPDF({orientation:canvas.width>canvas.height?'landscape':'portrait',unit:'px',format:[canvas.width,canvas.height]});
+  pdf.addImage(data,'PNG',0,0,canvas.width,canvas.height); pdf.save('board.pdf'); closeDrawer();
+}
+
+// ════ CTX MENU STYLE ════
+const ctxStyle=document.createElement('style');
+ctxStyle.textContent=`
+.ctx-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:10px;border:none;background:transparent;cursor:pointer;font-family:Tajawal,sans-serif;font-size:14px;font-weight:600;color:#334155;-webkit-tap-highlight-color:transparent}
+.ctx-btn:active{background:#f1f5f9}
+.dk .ctx-btn{color:#e2e8f0}
+.dk .ctx-btn:active{background:#1e293b}
+.ctx-btn span{flex:1;text-align:right}
+.ctx-red{color:#ef4444!important}
+.ctx-purple{color:#7c3aed!important}
+.ctx-sep{height:1px;background:#e2e8f0;margin:3px 0}
+.dk .ctx-sep{background:#334155}
+`;
+document.head.appendChild(ctxStyle);
+
+window.onload=initApp;
+</script>
+</body>
+</html>
