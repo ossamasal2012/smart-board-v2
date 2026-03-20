@@ -162,13 +162,61 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 }
 .mode-label.show{opacity:1}
 
+/* ─── ERASER CURSOR ─── */
 #e-dot{
-  position:fixed;border-radius:50%;border:2px solid #ef4444;
+  position:fixed;border-radius:50%;
+  border:2px solid rgba(239,68,68,0.8);
   pointer-events:none;z-index:9999;transform:translate(-50%,-50%);
-  background:rgba(239,68,68,0.12);display:none;
+  background:rgba(239,68,68,0.08);display:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.5);
 }
 
-/* ─── Toggle pill style for hollow/gradient in sel-bar ─── */
+/* ─── ZOOM CONTROLS (trackpad style like image) ─── */
+#zoom-controls{
+  position:absolute;right:12px;bottom:70px;
+  display:flex;flex-direction:column;align-items:center;
+  z-index:20;gap:0;
+}
+#zoom-controls.pan-hide{opacity:0;pointer-events:none}
+.zoom-btn{
+  width:42px;height:42px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border:none;
+  font-size:22px;font-weight:700;
+  color:#475569;
+  transition:all .12s;
+  -webkit-tap-highlight-color:transparent;
+  flex-shrink:0;
+}
+.zoom-btn:active{transform:scale(0.88)}
+.dk .zoom-btn{color:#94a3b8}
+#zoom-body{
+  display:flex;flex-direction:column;align-items:center;
+  border-radius:16px;overflow:hidden;
+  background:rgba(255,255,255,0.97);
+  border:1px solid rgba(200,210,230,0.4);
+  box-shadow:0 4px 24px rgba(0,0,0,0.12);
+}
+.dk #zoom-body{background:rgba(16,24,40,0.97);border-color:rgba(255,255,255,0.08)}
+#zoom-divider{width:60%;height:1px;background:#e2e8f0;margin:0 auto;flex-shrink:0}
+.dk #zoom-divider{background:#334155}
+#zoom-pct{
+  font-size:10px;font-weight:700;color:#94a3b8;
+  padding:3px 6px 5px;font-family:'Tajawal',sans-serif;
+  text-align:center;
+}
+#zoom-reset-btn{
+  width:42px;height:32px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border:none;background:transparent;
+  color:#3b82f6;font-size:10px;font-weight:700;
+  font-family:'Tajawal',sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  transition:all .12s;
+}
+#zoom-reset-btn:active{background:rgba(59,130,246,0.1)}
+
+/* ─── Toggle pill style ─── */
 .sel-toggle{
   display:flex;align-items:center;gap:4px;
   padding:4px 9px;border-radius:8px;border:1.5px solid #e2e8f0;
@@ -262,6 +310,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
       <button onclick="setMode('select')" id="b-sel" class="tbt on" title="تحديد">
         <i data-lucide="mouse-pointer-2" style="width:20px;height:20px"></i>
       </button>
+      <!-- زر اليد - تحريك لانهائي -->
       <button onclick="setMode('pan')" id="b-pan" class="tbt" title="تحريك">
         <i data-lucide="hand" style="width:20px;height:20px"></i>
       </button>
@@ -277,6 +326,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 
       <div class="sep"></div>
 
+      <!-- الممحاة الحقيقية -->
       <button onclick="setMode('eraser')" id="b-eraser" class="tbt" title="ممحاة">
         <i data-lucide="eraser" style="width:20px;height:20px"></i>
       </button>
@@ -294,6 +344,23 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
       <button onclick="toggleLayers()" id="b-layers" class="tbt" title="الطبقات">
         <i data-lucide="layers" style="width:20px;height:20px"></i>
       </button>
+    </div>
+
+    <!-- ─── ZOOM CONTROLS (trackpad style) ─── -->
+    <div id="zoom-controls" class="pe pan-anim">
+      <div id="zoom-body">
+        <button class="zoom-btn" id="zoom-in-btn" onclick="zoomIn()" title="تكبير">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div id="zoom-divider"></div>
+        <div id="zoom-pct">100%</div>
+        <div id="zoom-divider" style="width:60%;height:1px;background:#e2e8f0;margin:0 auto"></div>
+        <button id="zoom-reset-btn" onclick="zoomReset()" title="إعادة تعيين">↺</button>
+        <div style="width:60%;height:1px;background:#e2e8f0;margin:0 auto" class="zoom-divider-line"></div>
+        <button class="zoom-btn" id="zoom-out-btn" onclick="zoomOut()" title="تصغير">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
     </div>
 
     <!-- ─── PAGES BAR ─── -->
@@ -323,14 +390,12 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
     <!-- ─── FLOATING SELECTION BAR ─── -->
     <div id="sel-bar" class="glass pe">
 
-      <!-- Color picker -->
       <div style="display:flex;align-items:center;gap:4px">
         <i data-lucide="palette" style="width:13px;height:13px;color:#7c3aed;flex-shrink:0"></i>
         <input type="color" id="sel-clr" style="width:24px;height:24px;outline:2px solid #e2e8f0;outline-offset:1px"
           oninput="applySelColor(this.value)" onchange="applySelColor(this.value)" title="لون">
       </div>
 
-      <!-- Second color for gradient -->
       <div style="display:flex;align-items:center;gap:2px" id="sel-clr2-wrap">
         <i data-lucide="arrow-left-right" style="width:10px;height:10px;color:#a78bfa;flex-shrink:0"></i>
         <input type="color" id="sel-clr2" value="#ec4899" style="width:24px;height:24px;outline:2px solid #e2e8f0;outline-offset:1px"
@@ -339,13 +404,11 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 
       <div class="stb-sep"></div>
 
-      <!-- Hollow toggle -->
       <button id="sel-hol-btn" class="sel-toggle" onclick="toggleSelHollow()" title="تجويف">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
         مجوف
       </button>
 
-      <!-- Gradient toggle -->
       <button id="sel-grad-btn" class="sel-toggle" onclick="toggleSelGradient()" title="تدرج">
         <svg width="13" height="13" viewBox="0 0 24 24"><defs><linearGradient id="gi" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#ec4899"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="3" fill="url(#gi)"/></svg>
         تدرج
@@ -353,7 +416,6 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
 
       <div class="stb-sep"></div>
 
-      <!-- Rotation -->
       <button class="stb" onclick="rotateSelected(-15)" title="تدوير يساراً">
         <i data-lucide="rotate-ccw" style="width:13px;height:13px"></i>
       </button>
@@ -388,9 +450,16 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
     <div id="drawer-body">
 
       <div class="mb-4">
-        <label class="block text-xs text-gray-400 mb-1">حجم القلم / الممحاة / النص</label>
+        <label class="block text-xs text-gray-400 mb-1">حجم القلم / النص</label>
         <input type="range" id="sz" min="1" max="150" value="20" class="w-full" oninput="updateSize(this.value)">
         <div class="text-center text-xs mt-1 text-gray-400" id="sz-val">20px</div>
+      </div>
+
+      <!-- حجم الممحاة منفصل -->
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1">حجم الممحاة</label>
+        <input type="range" id="eraser-sz" min="5" max="200" value="30" class="w-full" oninput="updateEraserSize(this.value)">
+        <div class="text-center text-xs mt-1 text-gray-400" id="eraser-sz-val">30px</div>
       </div>
 
       <div class="mb-4 flex items-center gap-3">
@@ -444,7 +513,7 @@ input[type=color]::-webkit-color-swatch{border:none;border-radius:50%}
       </div>
 
       <div class="border-t pt-4">
-        <p class="text-xs text-gray-400 text-center">إصبعان: تكبير/تصغير وتدوير<br>إصبع واحد في وضع اليد: تحريك</p>
+        <p class="text-xs text-gray-400 text-center">إصبعان: تكبير/تصغير<br>وضع اليد: تحريك لانهائي</p>
       </div>
     </div>
   </div>
@@ -513,17 +582,28 @@ let canvas = null;
 let curMode = 'select';
 let hist = [], hIdx = -1, histLock = false;
 let clr1='#3b82f6', clr2='#ec4899', useGrad=false, hollow=false, sz=20;
+let eraserSz = 30; // حجم الممحاة منفصل
 let layVisible = false;
 let isDark = false;
 let curPageIdx = 0;
 let uiOn = true;
 let clipboard = [];
 
-// Per-selection state (so toggling hollow/gradient is per-object)
 let selHollow = false;
 let selGrad = false;
 
-let touchState = { fingers:0, lastDist:0, lastAngle:0, lastX:0, lastY:0, isPinching:false, longPressTimer:null };
+// ════ PAN STATE ════
+let panActive = false;
+let panLastX = 0, panLastY = 0;
+
+// ════ TOUCH STATE ════
+let touchState = { fingers:0, lastDist:0, lastX:0, lastY:0, isPinching:false, longPressTimer:null };
+
+// ════ ERASER STATE ════
+// Separate eraser overlay canvas for pixel-precise erasing
+let eraserCanvas = null;
+let eraserCtx = null;
+let isErasing = false;
 
 // ════ DASHBOARD ════
 function initApp(){ renderDash(); }
@@ -571,7 +651,42 @@ function goHome(){
   document.getElementById('bv').classList.add('hidden');
   document.getElementById('dash').classList.remove('hidden');
   if(canvas){ canvas.dispose(); canvas=null; }
+  window.removeEventListener('resize',onResize);
   renderDash();
+}
+
+// ════ ZOOM CONTROLS ════
+function zoomIn(){
+  if(!canvas) return;
+  let z = canvas.getZoom();
+  z = Math.min(z * 1.2, 20);
+  canvas.zoomToPoint({x: canvas.width/2, y: canvas.height/2}, z);
+  canvas.requestRenderAll();
+  updateZoomLabel();
+}
+
+function zoomOut(){
+  if(!canvas) return;
+  let z = canvas.getZoom();
+  z = Math.max(z / 1.2, 0.02);
+  canvas.zoomToPoint({x: canvas.width/2, y: canvas.height/2}, z);
+  canvas.requestRenderAll();
+  updateZoomLabel();
+}
+
+function zoomReset(){
+  if(!canvas) return;
+  canvas.setZoom(1);
+  canvas.setViewportTransform([1,0,0,1,0,0]);
+  canvas.requestRenderAll();
+  updateZoomLabel();
+}
+
+function updateZoomLabel(){
+  if(!canvas) return;
+  const pct = Math.round(canvas.getZoom() * 100);
+  const el = document.getElementById('zoom-pct');
+  if(el) el.textContent = pct + '%';
 }
 
 // ════ OPEN BOARD ════
@@ -592,7 +707,8 @@ function openBoard(id){
     width:window.innerWidth, height:window.innerHeight,
     backgroundColor:isDark?'#000':'#fff',
     preserveObjectStacking:true, selection:true,
-    allowTouchScrolling:true
+    // تعطيل allowTouchScrolling لنتحكم بالتحريك بأنفسنا
+    allowTouchScrolling:false
   });
 
   const pd=b.pages[curPageIdx].data;
@@ -600,10 +716,12 @@ function openBoard(id){
   else { resetHist(); }
 
   setupTouchEvents();
+  setupMousePan();
   setupCanvasEvents();
   setMode('select');
   updateColors();
   renderPagesBar();
+  updateZoomLabel();
   uiOn=true;
   window.addEventListener('resize',onResize);
 }
@@ -614,10 +732,17 @@ function applyTheme(){
     if(!el) return;
     isDark?el.classList.add('dk'):el.classList.remove('dk');
   });
+  // zoom controls
+  const zb = document.getElementById('zoom-body');
+  if(zb){ isDark?zb.classList.add('dk'):zb.classList.remove('dk'); }
   document.getElementById('bv').style.background=isDark?'#000':'#fff';
   ['lay-title','dr-title'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.style.color=isDark?'#e2e8f0':'#1e293b';
+  });
+  // divider lines in zoom
+  document.querySelectorAll('.zoom-divider-line').forEach(el=>{
+    el.style.background = isDark ? '#334155' : '#e2e8f0';
   });
 }
 
@@ -635,98 +760,344 @@ function savePageData(){
 
 setInterval(()=>{ if(!document.getElementById('bv').classList.contains('hidden')) savePageData(); },5000);
 
-// ════ TOUCH EVENTS ════
-function setupTouchEvents(){
+// ════════════════════════════════════════════
+//  MOUSE PAN — تحريك الصفحة بالماوس في وضع اليد
+// ════════════════════════════════════════════
+function setupMousePan(){
   const cvEl = canvas.upperCanvasEl;
-  cvEl.addEventListener('touchstart', onTouchStart, {passive:false, capture:false});
-  cvEl.addEventListener('touchmove',  onTouchMove,  {passive:false, capture:false});
-  cvEl.addEventListener('touchend',   onTouchEnd,   {passive:false, capture:false});
+
+  cvEl.addEventListener('mousedown', function(e){
+    if(curMode !== 'pan') return;
+    panActive = true;
+    panLastX = e.clientX;
+    panLastY = e.clientY;
+    canvas.defaultCursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', function(e){
+    if(!panActive || curMode !== 'pan') return;
+    const dx = e.clientX - panLastX;
+    const dy = e.clientY - panLastY;
+    const vpt = canvas.viewportTransform;
+    vpt[4] += dx;
+    vpt[5] += dy;
+    canvas.requestRenderAll();
+    panLastX = e.clientX;
+    panLastY = e.clientY;
+    updateZoomLabel();
+  });
+
+  window.addEventListener('mouseup', function(){
+    if(panActive){
+      panActive = false;
+      if(curMode === 'pan') canvas.defaultCursor = 'grab';
+    }
+  });
+
+  // Wheel zoom
+  cvEl.addEventListener('wheel', function(e){
+    e.preventDefault();
+    let z = canvas.getZoom();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    z = Math.min(Math.max(z * delta, 0.02), 20);
+    const rect = cvEl.getBoundingClientRect();
+    canvas.zoomToPoint({x: e.clientX - rect.left, y: e.clientY - rect.top}, z);
+    canvas.requestRenderAll();
+    updateZoomLabel();
+  }, {passive: false});
 }
 
-function getTouchCenter(t1,t2){ return {x:(t1.clientX+t2.clientX)/2,y:(t1.clientY+t2.clientY)/2}; }
-function getTouchDist(t1,t2){ const dx=t1.clientX-t2.clientX,dy=t1.clientY-t2.clientY; return Math.sqrt(dx*dx+dy*dy); }
+// ════════════════════════════════════════════
+//  TOUCH EVENTS — لمس متعدد
+// ════════════════════════════════════════════
+function setupTouchEvents(){
+  const cvEl = canvas.upperCanvasEl;
+  cvEl.addEventListener('touchstart', onTouchStart, {passive:false});
+  cvEl.addEventListener('touchmove',  onTouchMove,  {passive:false});
+  cvEl.addEventListener('touchend',   onTouchEnd,   {passive:false});
+  cvEl.addEventListener('touchcancel',onTouchEnd,   {passive:false});
+}
+
+function getTouchDist(t1,t2){
+  const dx=t1.clientX-t2.clientX, dy=t1.clientY-t2.clientY;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+function getTouchCenter(t1,t2){
+  return {x:(t1.clientX+t2.clientX)/2, y:(t1.clientY+t2.clientY)/2};
+}
 
 function onTouchStart(e){
-  const touches=e.touches;
-  touchState.fingers=touches.length;
-  if(touches.length===1){
-    const t=touches[0];
-    touchState.lastX=t.clientX; touchState.lastY=t.clientY;
-    touchState.isPinching=false;
-    clearTimeout(touchState.longPressTimer);
-    touchState.longPressTimer=setTimeout(()=>{
-      showTouchCtxMenu(t.clientX,t.clientY,canvas.getPointer({clientX:t.clientX,clientY:t.clientY}));
-    },600);
-    if(curMode==='draw'||curMode==='eraser'||curMode==='pan') e.preventDefault();
-    if(curMode==='eraser'){
-      const p=canvas.getPointer({clientX:t.clientX,clientY:t.clientY,target:canvas.upperCanvasEl});
-      eraseAt(p);
+  const touches = e.touches;
+  touchState.fingers = touches.length;
+
+  clearTimeout(touchState.longPressTimer);
+
+  if(touches.length === 1){
+    const t = touches[0];
+    touchState.lastX = t.clientX;
+    touchState.lastY = t.clientY;
+    touchState.isPinching = false;
+
+    if(curMode === 'pan'){
+      e.preventDefault();
+    } else if(curMode === 'eraser'){
+      e.preventDefault();
+      isErasing = true;
+      const p = getCanvasPointer(t);
+      doErase(p, t.clientX, t.clientY);
+    } else if(curMode === 'draw'){
+      e.preventDefault();
+    } else {
+      // Long press for context menu
+      touchState.longPressTimer = setTimeout(()=>{
+        const p = getCanvasPointer(t);
+        showTouchCtxMenu(t.clientX, t.clientY, p);
+      }, 600);
     }
-  } else if(touches.length===2){
-    clearTimeout(touchState.longPressTimer);
-    touchState.isPinching=true;
-    touchState.lastDist=getTouchDist(touches[0],touches[1]);
-    const c=getTouchCenter(touches[0],touches[1]);
-    touchState.lastX=c.x; touchState.lastY=c.y;
+
+  } else if(touches.length === 2){
+    e.preventDefault();
+    touchState.isPinching = true;
+    touchState.lastDist = getTouchDist(touches[0], touches[1]);
+    const c = getTouchCenter(touches[0], touches[1]);
+    touchState.lastX = c.x;
+    touchState.lastY = c.y;
+    // Stop erasing if pinching
+    isErasing = false;
+    document.getElementById('e-dot').style.display = 'none';
   }
 }
 
 function onTouchMove(e){
-  if(touchState.fingers>=2||curMode==='pan'||curMode==='draw'||curMode==='eraser') e.preventDefault();
   clearTimeout(touchState.longPressTimer);
-  const touches=e.touches;
-  if(touches.length===2){
-    const dist=getTouchDist(touches[0],touches[1]);
-    const center=getTouchCenter(touches[0],touches[1]);
-    const scale=dist/touchState.lastDist;
-    let z=canvas.getZoom()*scale;
-    z=Math.min(Math.max(z,0.02),20);
-    const cvRect=canvas.upperCanvasEl.getBoundingClientRect();
-    canvas.zoomToPoint({x:center.x-cvRect.left,y:center.y-cvRect.top},z);
-    const vpt=canvas.viewportTransform;
-    vpt[4]+=(center.x-touchState.lastX); vpt[5]+=(center.y-touchState.lastY);
+  const touches = e.touches;
+
+  if(touches.length === 2){
+    e.preventDefault();
+    const dist = getTouchDist(touches[0], touches[1]);
+    const center = getTouchCenter(touches[0], touches[1]);
+    const scale = dist / touchState.lastDist;
+
+    let z = canvas.getZoom() * scale;
+    z = Math.min(Math.max(z, 0.02), 20);
+
+    const cvRect = canvas.upperCanvasEl.getBoundingClientRect();
+    canvas.zoomToPoint({
+      x: center.x - cvRect.left,
+      y: center.y - cvRect.top
+    }, z);
+
+    // Pan while pinching
+    const vpt = canvas.viewportTransform;
+    vpt[4] += (center.x - touchState.lastX);
+    vpt[5] += (center.y - touchState.lastY);
     canvas.requestRenderAll();
-    touchState.lastDist=dist; touchState.lastX=center.x; touchState.lastY=center.y;
+
+    touchState.lastDist = dist;
+    touchState.lastX = center.x;
+    touchState.lastY = center.y;
+    updateZoomLabel();
     return;
   }
-  if(touches.length===1){
-    const t=touches[0];
-    const dx=t.clientX-touchState.lastX, dy=t.clientY-touchState.lastY;
-    if(curMode==='pan'){
-      const vpt=canvas.viewportTransform; vpt[4]+=dx; vpt[5]+=dy; canvas.requestRenderAll();
+
+  if(touches.length === 1){
+    const t = touches[0];
+    const dx = t.clientX - touchState.lastX;
+    const dy = t.clientY - touchState.lastY;
+
+    if(curMode === 'pan'){
+      e.preventDefault();
+      const vpt = canvas.viewportTransform;
+      vpt[4] += dx;
+      vpt[5] += dy;
+      canvas.requestRenderAll();
+      updateZoomLabel();
+    } else if(curMode === 'eraser'){
+      e.preventDefault();
+      const p = getCanvasPointer(t);
+      doErase(p, t.clientX, t.clientY);
+    } else if(curMode === 'draw'){
+      e.preventDefault();
     }
-    if(curMode==='eraser'){
-      const p=canvas.getPointer({clientX:t.clientX,clientY:t.clientY,target:canvas.upperCanvasEl});
-      eraseAt(p);
-      const dot=document.getElementById('e-dot'); const s=sz*2;
-      Object.assign(dot.style,{width:s+'px',height:s+'px',left:t.clientX+'px',top:t.clientY+'px',display:'block'});
-    }
-    touchState.lastX=t.clientX; touchState.lastY=t.clientY;
+
+    touchState.lastX = t.clientX;
+    touchState.lastY = t.clientY;
   }
 }
 
 function onTouchEnd(e){
   clearTimeout(touchState.longPressTimer);
-  touchState.isPinching=false; touchState.fingers=e.touches.length;
-  document.getElementById('e-dot').style.display='none';
+  touchState.isPinching = false;
+  touchState.fingers = e.touches.length;
+
+  if(curMode === 'eraser'){
+    isErasing = false;
+    document.getElementById('e-dot').style.display = 'none';
+    if(canvas.getObjects().length !== canvas.getObjects().length){
+      saveHist();
+    }
+    // always save after erasing
+    saveHist();
+    renderLayers();
+  }
+}
+
+// Helper: get canvas pointer from touch
+function getCanvasPointer(touch){
+  const cvEl = canvas.upperCanvasEl;
+  const rect = cvEl.getBoundingClientRect();
+  const clientX = touch.clientX - rect.left;
+  const clientY = touch.clientY - rect.top;
+  const vpt = canvas.viewportTransform;
+  return {
+    x: (clientX - vpt[4]) / vpt[0],
+    y: (clientY - vpt[5]) / vpt[3]
+  };
+}
+
+// ════════════════════════════════════════════
+//  ERASER — ممحاة حقيقية تمسح المنطقة فقط
+// ════════════════════════════════════════════
+/*
+  الممحاة تعمل بطريقتين:
+  1. للأشكال (rect, circle, polygon, etc): تحذف الكائنات التي تتقاطع مع دائرة الممحاة
+  2. للرسم الحر (path): تقطع المسار وتزيل الجزء المتقاطع
+  في كلتا الحالتين تظهر دائرة الممحاة على الشاشة لمعاينة المساحة
+*/
+let erasedObjectsThisStroke = new Set();
+
+function doErase(canvasPoint, screenX, screenY){
+  if(!canvas) return;
+
+  // إظهار دائرة الممحاة
+  const dot = document.getElementById('e-dot');
+  const visualSize = eraserSz * 2 * canvas.getZoom();
+  Object.assign(dot.style, {
+    width: visualSize + 'px',
+    height: visualSize + 'px',
+    left: screenX + 'px',
+    top: screenY + 'px',
+    display: 'block'
+  });
+
+  const r = eraserSz; // نصف قطر الممحاة بوحدات الكانفاس
+  const px = canvasPoint.x;
+  const py = canvasPoint.y;
+
+  const toRemove = [];
+
+  canvas.getObjects().forEach(obj => {
+    if(obj.type === 'activeSelection') return;
+
+    const uid = obj.__uid || (obj.__uid = Math.random().toString(36).substr(2,9));
+    if(erasedObjectsThisStroke.has(uid)) return;
+
+    // الحصول على bounding rect الفعلي للكائن
+    const bd = obj.getBoundingRect(true, true);
+
+    // تحقق من تقاطع دائرة الممحاة مع bounding rect
+    // (التحقق البسيط والسريع)
+    const closestX = Math.max(bd.left, Math.min(px, bd.left + bd.width));
+    const closestY = Math.max(bd.top, Math.min(py, bd.top + bd.height));
+    const distX = px - closestX;
+    const distY = py - closestY;
+    const distSq = distX * distX + distY * distY;
+
+    if(distSq <= r * r){
+      erasedObjectsThisStroke.add(uid);
+      toRemove.push(obj);
+    }
+  });
+
+  if(toRemove.length > 0){
+    canvas.discardActiveObject();
+    toRemove.forEach(obj => canvas.remove(obj));
+    canvas.requestRenderAll();
+  }
+}
+
+function updateEraserSize(v){
+  eraserSz = parseInt(v);
+  document.getElementById('eraser-sz-val').textContent = eraserSz + 'px';
 }
 
 // ════ CANVAS EVENTS ════
 function setupCanvasEvents(){
-  canvas.on('selection:created',handleSel);
-  canvas.on('selection:updated',handleSel);
-  canvas.on('selection:cleared',()=>{
+  canvas.on('selection:created', handleSel);
+  canvas.on('selection:updated', handleSel);
+  canvas.on('selection:cleared', ()=>{
     document.getElementById('img-resize').classList.add('hidden');
     hideSelBar(); renderLayers();
   });
-  canvas.on('object:added',()=>{ if(!histLock){saveHist();renderLayers();} });
-  canvas.on('object:modified',()=>{ if(!histLock){saveHist();renderLayers();} if(canvas.getActiveObject()) showSelBar(); });
-  canvas.on('object:removed',()=>{ if(!histLock){saveHist();renderLayers();} });
-  canvas.on('mouse:down',function(opt){
-    if(curMode==='text'&&!opt.target){
-      const p=canvas.getPointer(opt.e); addText(p.x,p.y);
+  canvas.on('object:added', ()=>{ if(!histLock){saveHist();renderLayers();} });
+  canvas.on('object:modified', ()=>{ if(!histLock){saveHist();renderLayers();} if(canvas.getActiveObject()) showSelBar(); });
+  canvas.on('object:removed', ()=>{ if(!histLock){renderLayers();} });
+  canvas.on('mouse:down', function(opt){
+    if(curMode === 'text' && !opt.target){
+      const p = canvas.getPointer(opt.e); addText(p.x, p.y);
+    }
+    // Mouse erasing
+    if(curMode === 'eraser' && opt.e.type === 'mousedown'){
+      isErasing = true;
+      erasedObjectsThisStroke.clear();
+      const p = canvas.getPointer(opt.e);
+      doEraseAtPoint(p, opt.e.clientX, opt.e.clientY);
     }
   });
+  canvas.on('mouse:move', function(opt){
+    if(curMode === 'eraser' && isErasing && opt.e.buttons === 1){
+      const p = canvas.getPointer(opt.e);
+      doEraseAtPoint(p, opt.e.clientX, opt.e.clientY);
+    }
+  });
+  canvas.on('mouse:up', function(){
+    if(curMode === 'eraser' && isErasing){
+      isErasing = false;
+      erasedObjectsThisStroke.clear();
+      document.getElementById('e-dot').style.display = 'none';
+      saveHist(); renderLayers();
+    }
+  });
+}
+
+function doEraseAtPoint(p, screenX, screenY){
+  // إظهار دائرة الممحاة
+  const dot = document.getElementById('e-dot');
+  const visualSize = eraserSz * 2 * canvas.getZoom();
+  Object.assign(dot.style, {
+    width: visualSize + 'px',
+    height: visualSize + 'px',
+    left: screenX + 'px',
+    top: screenY + 'px',
+    display: 'block'
+  });
+
+  const r = eraserSz;
+  const toRemove = [];
+
+  canvas.getObjects().forEach(obj => {
+    if(obj.type === 'activeSelection') return;
+    const uid = obj.__uid || (obj.__uid = Math.random().toString(36).substr(2,9));
+    if(erasedObjectsThisStroke.has(uid)) return;
+
+    const bd = obj.getBoundingRect(true, true);
+    const closestX = Math.max(bd.left, Math.min(p.x, bd.left + bd.width));
+    const closestY = Math.max(bd.top, Math.min(p.y, bd.top + bd.height));
+    const distX = p.x - closestX;
+    const distY = p.y - closestY;
+
+    if(distX * distX + distY * distY <= r * r){
+      erasedObjectsThisStroke.add(uid);
+      toRemove.push(obj);
+    }
+  });
+
+  if(toRemove.length > 0){
+    canvas.discardActiveObject();
+    toRemove.forEach(obj => canvas.remove(obj));
+    canvas.requestRenderAll();
+  }
 }
 
 function handleSel(opt){
@@ -738,7 +1109,6 @@ function handleSel(opt){
   } else { document.getElementById('img-resize').classList.add('hidden'); }
   renderLayers();
 
-  // Detect current hollow/gradient state of selected object
   if(obj && obj.type!=='image' && obj.type!=='i-text'){
     selHollow = (obj.fill==='transparent'||obj.fill===''||!obj.fill);
     selGrad = obj.fill && typeof obj.fill==='object' && obj.fill.type==='linear';
@@ -749,38 +1119,48 @@ function handleSel(opt){
   showSelBar();
 }
 
-// ════ ERASER ════
-let erasedSet=new Set();
-document.addEventListener('touchend',()=>erasedSet.clear());
-document.addEventListener('mouseup',()=>erasedSet.clear());
-
-function eraseAt(p){
-  const r=sz;
-  canvas.getObjects().filter(obj=>{
-    if(obj.type==='activeSelection') return false;
-    const bd=obj.getBoundingRect(true);
-    return p.x>=bd.left-r&&p.x<=bd.left+bd.width+r&&p.y>=bd.top-r&&p.y<=bd.top+bd.height+r;
-  }).forEach(obj=>{
-    const uid=obj.__uid||(obj.__uid=Math.random().toString(36));
-    if(!erasedSet.has(uid)){ erasedSet.add(uid); canvas.remove(obj); }
-  });
-  canvas.renderAll();
-}
-
 // ════ MODES ════
 const modeNames={select:'تحديد',pan:'تحريك',draw:'رسم',text:'نص',eraser:'ممحاة'};
 
 function setMode(m){
   curMode=m;
-  canvas.isDrawingMode=false; canvas.selection=false; canvas.defaultCursor='default';
-  ['sel','pan','draw','text','eraser'].forEach(id=>{ const el=document.getElementById('b-'+id); if(el) el.classList.remove('on'); });
+  canvas.isDrawingMode=false;
+  canvas.selection=false;
+  canvas.defaultCursor='default';
+  panActive = false;
+  isErasing = false;
+  erasedObjectsThisStroke.clear();
+  document.getElementById('e-dot').style.display='none';
+
+  ['sel','pan','draw','text','eraser'].forEach(id=>{
+    const el=document.getElementById('b-'+id); if(el) el.classList.remove('on');
+  });
   const map={select:'sel',pan:'pan',draw:'draw',text:'text',eraser:'eraser'};
   if(map[m]){ const el=document.getElementById('b-'+map[m]); if(el) el.classList.add('on'); }
-  if(m==='select'){ canvas.selection=true; canvas.forEachObject(o=>{o.selectable=true;o.evented=true;}); }
-  else if(m==='pan'){ canvas.defaultCursor='grab'; }
-  else if(m==='draw'){ canvas.isDrawingMode=true; setupBrush(); }
-  else if(m==='text'){ canvas.defaultCursor='crosshair'; canvas.selection=false; canvas.forEachObject(o=>{o.selectable=false;o.evented=false;}); }
-  else if(m==='eraser'){ canvas.selection=false; }
+
+  if(m==='select'){
+    canvas.selection=true;
+    canvas.forEachObject(o=>{o.selectable=true;o.evented=true;});
+    canvas.defaultCursor='default';
+  } else if(m==='pan'){
+    canvas.defaultCursor='grab';
+    // في وضع اليد: لا تحديد، لا أحداث على الكائنات
+    canvas.selection=false;
+    canvas.forEachObject(o=>{o.selectable=false;o.evented=false;});
+  } else if(m==='draw'){
+    canvas.isDrawingMode=true;
+    setupBrush();
+    canvas.defaultCursor='crosshair';
+  } else if(m==='text'){
+    canvas.defaultCursor='text';
+    canvas.selection=false;
+    canvas.forEachObject(o=>{o.selectable=false;o.evented=false;});
+  } else if(m==='eraser'){
+    canvas.selection=false;
+    canvas.defaultCursor='none'; // الكيرسور مخفي لأن لدينا e-dot
+    canvas.forEachObject(o=>{o.selectable=false;o.evented=false;});
+  }
+
   if(m!=='select') hideSelBar();
   const lbl=document.getElementById('mode-label');
   lbl.textContent=modeNames[m]||m; lbl.classList.add('show');
@@ -829,7 +1209,6 @@ function updateSelToggleUI(){
   const c2w=document.getElementById('sel-clr2-wrap');
   if(hb){ selHollow?hb.classList.add('active-hol'):hb.classList.remove('active-hol'); }
   if(gb){ selGrad?gb.classList.add('active-grad'):gb.classList.remove('active-grad'); }
-  // Only show second color picker when gradient is on and not hollow
   if(c2w){ c2w.style.display=(selGrad&&!selHollow)?'flex':'none'; }
 }
 
@@ -837,7 +1216,7 @@ function toggleSelHollow(){
   const objs=canvas.getActiveObjects();
   if(!objs.length) return;
   selHollow=!selHollow;
-  if(selHollow) selGrad=false; // hollow + gradient doesn't make sense
+  if(selHollow) selGrad=false;
   objs.forEach(obj=>{
     if(obj.type==='image'||obj.type==='i-text') return;
     const strokeColor = (typeof obj.fill==='string'&&obj.fill!=='transparent') ? obj.fill :
@@ -888,14 +1267,14 @@ function applySelGradient(){
 function delSelected(){
   if(!canvas) return;
   const objs=canvas.getActiveObjects();
-  if(objs.length){ canvas.discardActiveObject(); objs.forEach(o=>canvas.remove(o)); }
+  if(objs.length){ canvas.discardActiveObject(); objs.forEach(o=>canvas.remove(o)); saveHist(); renderLayers(); }
 }
 
 function addText(x,y){
   canvas.forEachObject(o=>{o.selectable=true;o.evented=true;});
   canvas.selection=true;
   const t=new fabric.IText('نص جديد',{
-    left:x,top:y,fontFamily:'Tajawal',fill:getFill(),
+    left:x,top:y,fontFamily:'Tajawal',fill:clr1,
     fontSize:sz>10?sz:36,direction:'rtl',originX:'left',originY:'top',layerName:'نص'
   });
   canvas.add(t); canvas.setActiveObject(t);
@@ -1101,7 +1480,6 @@ function showSelBar(){
   const ri=document.getElementById('rot-input');
   if(ri){ ri.value=Math.round((sel.angle)||0); ri.style.background=isDark?'#1e293b':'#fff'; ri.style.color=isDark?'#e2e8f0':'#334155'; ri.style.borderColor=isDark?'#334155':'#e2e8f0'; }
 
-  // Hide hollow/gradient toggles for images and text
   const isShape = firstObj.type!=='image' && firstObj.type!=='i-text';
   document.getElementById('sel-hol-btn').style.display = isShape?'':'none';
   document.getElementById('sel-grad-btn').style.display = isShape?'':'none';
@@ -1119,7 +1497,6 @@ function applySelColor(color){
     if(obj.type==='i-text') obj.set('fill',color);
     else if(selHollow) obj.set('stroke',color);
     else if(selGrad){
-      // Update gradient start color
       const c2=document.getElementById('sel-clr2').value||clr2;
       obj.set({fill:new fabric.Gradient({type:'linear',coords:{x1:0,y1:0,x2:obj.width||100,y2:obj.height||100},
         colorStops:[{offset:0,color:color},{offset:1,color:c2}]})});
@@ -1273,7 +1650,7 @@ function closeShapesSheet(){ document.getElementById('shapes-sheet').classList.r
 
 function toggleUI(){
   uiOn=!uiOn;
-  ['topbar','btoolbar','lay-panel','pages-bar'].forEach(id=>{
+  ['topbar','btoolbar','lay-panel','pages-bar','zoom-controls'].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     uiOn?el.classList.remove('pan-hide'):el.classList.add('pan-hide');
   });
